@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Sensitive authentication & session tokens
+.auth_session.json
+.env
+*.pem
+*.key
+
+# Captured network traffic & discovery dumps
+docs/captured_*.json
+docs/*.html
+docs/*.xlsx
+docs/*.js
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
