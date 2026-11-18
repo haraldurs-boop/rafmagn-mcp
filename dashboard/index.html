@@ -48,7 +48,11 @@
     <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
       <div>
         <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Rafmagnsnotkunin okkar</h1>
-        <p class="text-sm md:text-base text-slate-500 mt-1">Samantekt fyrir heimili og sumarbústað</p>
+        <p class="text-sm md:text-base text-slate-500 mt-1 flex items-center gap-2">
+          <span>Samantekt fyrir heimili og sumarbústað</span>
+          <span class="text-slate-300">·</span>
+          <span id="last-updated-text" class="text-xs text-slate-400">Uppfæri...</span>
+        </p>
       </div>
       <div class="flex items-center gap-3">
         <a href="/" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-sm transition" title="Aftur í B12 Fjölskyldu-Hub">
@@ -77,6 +81,27 @@
       </div>
     </header>
 
+    <!-- OFFLINE / DISCONNECTED WARNING BANNER -->
+    <div id="offline-banner" class="hidden bg-amber-50/90 border border-amber-200 rounded-2xl p-4 md:p-5 text-amber-900 shadow-sm transition">
+      <div class="flex items-start gap-3.5">
+        <div class="p-1.5 bg-amber-100 rounded-xl text-amber-700 mt-0.5 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-amber-900">Aðvörun um tengingu við veitur</h3>
+            <span class="text-[10px] font-semibold bg-amber-200/70 text-amber-800 px-2 py-0.5 rounded-full">Staðbundin gögn virk</span>
+          </div>
+          <p class="text-xs text-amber-800 mt-1 leading-relaxed" id="offline-banner-text">
+            Ekki næst beint samband við veitu. Sýnd gögn og reikningar eru sótt úr staðbundnum SQLite gagnagrunni.
+          </p>
+        </div>
+        <div class="hidden sm:block text-right shrink-0">
+          <span class="text-[11px] font-mono text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200/60">auth_helper.py all</span>
+        </div>
+      </div>
+    </div>
+
     <!-- TOP ROW: TWO SUMMARY CARDS -->
     <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
@@ -88,9 +113,11 @@
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
               Heimilið
             </span>
-            <span class="text-xs text-slate-400 font-mono" id="home-meter">AMR mælir</span>
-          </div>
-          
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400 font-mono" id="home-meter">AMR mælir</span>
+              <span id="home-source-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">Gagnagrunnur</span>
+            </div>
+          </div>          
           <h2 class="text-base font-medium text-slate-700 mt-3" id="home-address">Aðalheimili</h2>
           
           <div class="mt-6 flex items-baseline gap-2">
@@ -128,7 +155,10 @@
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
               Sumarbústaðurinn
             </span>
-            <span class="text-xs text-slate-400 font-mono" id="cottage-meter">MMR mælir</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400 font-mono" id="cottage-meter">MMR mælir</span>
+              <span id="cottage-source-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">Gagnagrunnur</span>
+            </div>
           </div>
           
           <h2 class="text-base font-medium text-slate-700 mt-3" id="cottage-address">Sumarbústaður</h2>
@@ -265,7 +295,12 @@
     }
 
     function renderDashboard(data) {
-      // 1. Auth Status
+      // 0. Last Updated
+      if (data.last_updated_human) {
+        document.getElementById('last-updated-text').innerText = `Síðast uppfært: ${data.last_updated_human}`;
+      }
+
+      // 1. Auth Status & Offline Banner
       const orkDot = data.auth_status.orkusalan ? 'bg-emerald-500' : 'bg-red-500';
       const rarDot = data.auth_status.rarik ? 'bg-emerald-500' : 'bg-red-500';
       const veiturDot = data.auth_status.veitur ? 'bg-emerald-500' : 'bg-red-500';
@@ -273,12 +308,34 @@
       document.getElementById('rar-status').innerHTML = `<span class="w-2 h-2 rounded-full ${rarDot}"></span> RARIK`;
       document.getElementById('veitur-status').innerHTML = `<span class="w-2 h-2 rounded-full ${veiturDot}"></span> Veitur`;
 
+      // Warning Banner if any provider is disconnected
+      const banner = document.getElementById('offline-banner');
+      const bannerText = document.getElementById('offline-banner-text');
+      if (data.auth_status.offline_providers && data.auth_status.offline_providers.length > 0) {
+        banner.classList.remove('hidden');
+        const names = data.auth_status.offline_providers.join(' og ');
+        bannerText.innerHTML = `Setukökur/tenging við <strong>${names}</strong> eru útrunnar eða ótengdar. Sýndar tölur og reikningar koma úr staðbundna SQLite gagnagrunninum (telemetry.db). Endurnýjaðu auðkenningu með <code>python auth_helper.py all</code> á netþjóninum.`;
+      } else {
+        banner.classList.add('hidden');
+      }
+
       // 2. Heimilið Card
       document.getElementById('home-meter').innerText = data.home.meter_number;
       document.getElementById('home-address').innerText = data.home.address;
       document.getElementById('home-kwh').innerText = Math.round(data.home.month_kwh).toLocaleString('is-IS');
       if (document.getElementById('home-water') && data.home.month_hot_water_m3) {
         document.getElementById('home-water').innerText = data.home.month_hot_water_m3.toLocaleString('is-IS');
+      }
+
+      const homeBadge = document.getElementById('home-source-badge');
+      if (homeBadge) {
+        if (data.home.is_live) {
+          homeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+          homeBadge.innerText = 'Rauntími';
+        } else {
+          homeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200';
+          homeBadge.innerText = 'Gagnagrunnur';
+        }
       }
       
       const homeYoy = document.getElementById('home-yoy-pill');
@@ -295,6 +352,17 @@
       document.getElementById('cottage-meter').innerText = data.cottage.meter_number;
       document.getElementById('cottage-address').innerText = data.cottage.address;
       document.getElementById('cottage-kwh').innerText = Math.round(data.cottage.month_kwh).toLocaleString('is-IS');
+
+      const cottageBadge = document.getElementById('cottage-source-badge');
+      if (cottageBadge) {
+        if (data.cottage.is_live) {
+          cottageBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+          cottageBadge.innerText = 'Rauntími';
+        } else {
+          cottageBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200';
+          cottageBadge.innerText = 'Gagnagrunnur';
+        }
+      }
       
       const cotYoy = document.getElementById('cottage-yoy-pill');
       if (data.cottage.yoy_decreased) {

@@ -178,13 +178,29 @@ def get_dashboard_data() -> Dict[str, Any]:
     # 5. Hot Water Summary (Veitur)
     home_hot_water_m3 = 52.7
 
+    # Check health and determine offline providers
+    offline_providers = []
+    if not auth_status["orkusalan"]:
+        offline_providers.append("Orkusalan")
+    if not auth_status["rarik"]:
+        offline_providers.append("RARIK")
+    if not auth_status["veitur"]:
+        offline_providers.append("Veitur")
+
+    auth_status["all_healthy"] = (len(offline_providers) == 0)
+    auth_status["offline_providers"] = offline_providers
+
     # 6. Daily chart labels
     chart_labels = [f"{day}. okt" for day in range(1, 32)]
     home_avg_daily = round(home_oct_2026 / 31.0, 1)
     cottage_avg_daily = round(cottage_oct_2026 / 31.0, 1)
 
+    now = datetime.now()
+    last_updated_str = now.strftime("%d.%m.%Y kl. %H:%M")
+
     return {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now.isoformat(),
+        "last_updated_human": last_updated_str,
         "last_completed_month": "Október 2026",
         "auth_status": auth_status,
         "home": {
@@ -192,6 +208,8 @@ def get_dashboard_data() -> Dict[str, Any]:
             "address": home_address,
             "meter_number": home_meter_nr,
             "meter_type": "AMR snjallmælir",
+            "is_live": auth_status["orkusalan"],
+            "source_label": "Rauntími (Orkusalan)" if auth_status["orkusalan"] else "Staðbundinn grunnur",
             "month_kwh": home_oct_2026,
             "month_hot_water_m3": home_hot_water_m3,
             "yoy_kwh": home_oct_2025,
@@ -209,6 +227,8 @@ def get_dashboard_data() -> Dict[str, Any]:
             "address": cottage_address,
             "meter_number": cottage_meter_nr,
             "meter_type": "MMR mælir (RARIK)",
+            "is_live": auth_status["rarik"],
+            "source_label": "Rauntími (RARIK)" if auth_status["rarik"] else "Staðbundinn grunnur",
             "month_kwh": cottage_oct_2026,
             "yoy_kwh": cottage_oct_2025,
             "yoy_diff_kwh": abs(cottage_yoy_diff),
