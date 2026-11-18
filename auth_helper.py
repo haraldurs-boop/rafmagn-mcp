@@ -168,6 +168,9 @@ async def login_rarik_headed() -> bool:
                 rarik_dict = {c["name"]: c["value"] for c in cookies if "rarik.is" in c["domain"]}
                 session.setdefault("rarik", {})["cookies"] = rarik_dict
                 save_session(session)
+                os.system("scp .auth_session.json root@192.168.68.87:/opt/rafmagn-mcp/.auth_session.json")
+                os.system("ssh root@192.168.68.87 'systemctl restart rafmagn-mcp.service rafmagn-dashboard.service'")
+                print("[+] RARIK session synchronized with r8q and services restarted!")
                 break
 
         await browser.close()
