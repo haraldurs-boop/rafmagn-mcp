@@ -5,11 +5,17 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import httpx
 from mcp.server.fastmcp import FastMCP
+from veitur_client import (
+    get_veitur_client,
+    check_veitur_auth,
+    get_veitur_consumption,
+    get_veitur_invoices
+)
 
 # Initialize FastMCP Server
 mcp_host = os.environ.get("MCP_HOST", "0.0.0.0")
 mcp_port = int(os.environ.get("MCP_PORT", "8051"))
-mcp = FastMCP("Icelandic Electricity Usage (RARIK & Orkusalan)", host=mcp_host, port=mcp_port)
+mcp = FastMCP("Icelandic Utility Usage (RARIK, Orkusalan & Veitur)", host=mcp_host, port=mcp_port)
 
 AUTH_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".auth_session.json")
 
@@ -53,17 +59,18 @@ def get_rarik_client() -> httpx.Client:
 @mcp.tool()
 def check_auth_status() -> Dict[str, Any]:
     """
-    Check whether authentication sessions for Orkusalan and RARIK are currently valid.
+    Check whether authentication sessions for Orkusalan, RARIK, and Veitur are currently valid.
     Returns status for each service and instructions if re-authentication is required.
     """
     auth = load_auth()
     status = {
         "timestamp": datetime.now().isoformat(),
         "orkusalan": {"authenticated": False, "message": ""},
-        "rarik": {"authenticated": False, "message": ""}
+        "rarik": {"authenticated": False, "message": ""},
+        "veitur": {"authenticated": False, "message": ""}
     }
 
-    # Test Orkusalan
+    # 1. Test Orkusalan
     ork_cookies = auth.get("orkusalan", {}).get("cookies", {})
     if "connect.sid" in ork_cookies:
         try:
@@ -79,7 +86,7 @@ def check_auth_status() -> Dict[str, Any]:
     else:
         status["orkusalan"]["message"] = "Not authenticated. Run `python auth_helper.py orkusalan`"
 
-    # Test RARIK
+    # 2. Test RARIK
     rarik_cookies = auth.get("rarik", {}).get("cookies", {})
     if ".ASPXAUTH" in rarik_cookies:
         try:
@@ -95,30 +102,38 @@ def check_auth_status() -> Dict[str, Any]:
     else:
         status["rarik"]["message"] = "Not authenticated. Run `python auth_helper.py rarik`"
 
+    # 3. Test Veitur
+    v_status = check_veitur_auth()
+    if v_status.get("authenticated"):
+        user_name = v_status.get("user", {}).get("name", "Active")
+        status["veitur"]["authenticated"] = True
+        status["veitur"]["message"] = f"Session active ({user_name})"
+    else:
+        status["veitur"]["message"] = f"Not authenticated ({v_status.get('error', 'expired')}). Run `python auth_helper.py veitur`"
+
     return status
 
 @mcp.tool()
 def get_meters() -> List[Dict[str, Any]]:
     """
-    Get all electricity meters and connection points associated with the customer profile.
-    Provides meter IDs, addresses, meter types (AMR Smart Meter vs MMR Manual Meter),
-    and telemetry capabilities (e.g. hourly vs daily).
+    Get all electricity and utility meters associated with the customer profile across
+    Orkusalan, RARIK, and Veitur.
+    Provides meter IDs, utility types (Electricity vs Hot Water), addresses, and capabilities.
     """
-    with get_orkusalan_client() as client:
-        # Use Next.js user data endpoint or fallback to known configurations
-        res = client.get("/_next/data/wFrktF2ZvpLkqHzKBMmos/minar-sidur.json")
-        if res.status_code != 200:
-            # Fallback attempt if Next buildId rotated
-            res = client.get("/minar-sidur")
-            
-        meters_data = []
-        if res.status_code == 200:
-            try:
+    meters_data = []
+
+    # 1. Fetch Orkusalan meters
+    try:
+        with get_orkusalan_client() as client:
+            res = client.get("/_next/data/wFrktF2ZvpLkqHzKBMmos/minar-sidur.json")
+            if res.status_code == 200:
                 data = res.json()
                 connections = data.get("pageProps", {}).get("user", {}).get("connections", [])
                 for conn in connections:
                     is_amr = conn.get("configType") == "AMR mælir"
                     meters_data.append({
+                        "provider": "Orkusalan",
+                        "utility": "electricity",
                         "connection_id": conn.get("id"),
                         "meter_number": conn.get("meterNumber"),
                         "name": conn.get("name", "").strip(),
@@ -133,15 +148,15 @@ def get_meters() -> List[Dict[str, Any]]:
                         "estimated_annual_cost_isk": conn.get("estimatedAnnualValue"),
                         "active": conn.get("active", True)
                     })
-                return meters_data
-            except Exception as e:
-                pass
+    except Exception:
+        pass
 
-        # If dynamic parsing failed, check cached session customer data
-        auth = load_auth()
-        cached_cust = auth.get("orkusalan", {}).get("customer", {})
-        return [
+    if not meters_data:
+        # Fallback to known Orkusalan meters if dynamic route failed
+        meters_data.extend([
             {
+                "provider": "Orkusalan",
+                "utility": "electricity",
                 "connection_id": "CON-2207334",
                 "meter_number": "200-6092777587",
                 "name": "Aðalheimili (AMR mælir)",
@@ -152,6 +167,8 @@ def get_meters() -> List[Dict[str, Any]]:
                 "note": "Primary residence smart meter with full hourly telemetry"
             },
             {
+                "provider": "Orkusalan",
+                "utility": "electricity",
                 "connection_id": "CON-2068111",
                 "meter_number": "101-36815202",
                 "name": "Sumarbústaður (MMR mælir)",
@@ -161,7 +178,37 @@ def get_meters() -> List[Dict[str, Any]]:
                 "supports_hourly": False,
                 "note": "Summer cottage manual meter (supports daily/monthly averages)"
             }
-        ]
+        ])
+
+    # 2. Add Veitur meters (Heimilið distribution & hot water)
+    meters_data.extend([
+        {
+            "provider": "Veitur",
+            "utility": "electricity_distribution",
+            "connection_id": "Veitur-62858",
+            "meter_number": "62858",
+            "name": "Heimilið - Rafmagnsdreifing (Veitur)",
+            "config_name": "Snjallmælir 6092777587",
+            "meter_type": "Smart Meter (Snjallmælir)",
+            "supports_hourly": True,
+            "unit": "kWh",
+            "note": "Electricity grid distribution operator for Heimilið"
+        },
+        {
+            "provider": "Veitur",
+            "utility": "hot_water",
+            "connection_id": "Veitur-30968",
+            "meter_number": "30968",
+            "name": "Heimilið - Hitaveita (Veitur)",
+            "config_name": "Snjallmælir 4081726607",
+            "meter_type": "Smart Water Meter (Snjallmælir)",
+            "supports_hourly": True,
+            "unit": "m³",
+            "note": "Geothermal hot water heating meter for Heimilið"
+        }
+    ])
+
+    return meters_data
 
 @mcp.tool()
 def get_electricity_usage(
@@ -174,13 +221,34 @@ def get_electricity_usage(
     Get electricity consumption data (kWh) for a specified meter.
 
     Parameters:
-    - meter_id: Meter number (e.g. '200-6092777587' or '101-36815202') or connection ID ('CON-2207334', 'CON-2068111').
-                Defaults to the AMR smart meter.
+    - meter_id: Meter number (e.g. '200-6092777587', '101-36815202', '62858') or connection ID.
+                Defaults to the primary residence AMR smart meter.
     - start_date: Start date format 'YYYY-MM-DD'. Defaults to 7 days ago for hourly/daily, or 12 months ago for monthly.
     - end_date: End date format 'YYYY-MM-DD'. Defaults to today.
     - resolution: 'hourly' | 'daily' | 'monthly'. (Note: 'hourly' requires an AMR smart meter).
     """
-    # Normalize resolution
+    # Check if Veitur distribution meter requested
+    if meter_id and ("62858" in meter_id or "veitur" in meter_id.lower()):
+        period_map = {"hourly": "day", "daily": "month", "monthly": "last12Months"}
+        period = period_map.get(resolution.lower(), "month")
+        target_date = end_date or start_date or datetime.now().strftime("%Y-%m-%d")
+        v_data = get_veitur_consumption(utility="rafmagn", meter_id="62858", period=period, date=target_date)
+        return {
+            "meter": {
+                "name": "Heimilið - Rafmagnsdreifing (Veitur)",
+                "meter_number": "62858",
+                "provider": "Veitur",
+                "utility": "electricity_distribution"
+            },
+            "resolution": resolution,
+            "period": period,
+            "date": target_date,
+            "total_kwh": v_data.get("total_usage", 0.0),
+            "readings_count": v_data.get("readings_count", 0),
+            "readings": v_data.get("readings", [])
+        }
+
+    # Normalize resolution for Orkusalan
     res_map = {"hourly": "Hourly", "daily": "Daily", "monthly": "Monthly"}
     time_period = res_map.get(resolution.lower(), "Daily")
 
@@ -207,8 +275,7 @@ def get_electricity_usage(
                 break
     
     if not selected_meter:
-        # Default to AMR meter if hourly, else first meter
-        amr_meter = next((m for m in meters if m.get("supports_hourly")), meters[0] if meters else None)
+        amr_meter = next((m for m in meters if m.get("supports_hourly") and m.get("provider") == "Orkusalan"), meters[0] if meters else None)
         selected_meter = amr_meter
 
     if not selected_meter:
@@ -259,14 +326,48 @@ def get_electricity_usage(
         }
 
 @mcp.tool()
-def get_invoices(limit: int = 6, provider: str = "all") -> Dict[str, Any]:
+def get_water_usage(
+    meter_id: str = "30968",
+    period: str = "month",
+    date: Optional[str] = None
+) -> Dict[str, Any]:
     """
-    Get recent electricity and distribution invoices from Orkusalan and RARIK.
+    Get hot water consumption (hitaveita) from Veitur in cubic meters (m³).
+
+    Parameters:
+    - meter_id: Hot water meter number (default: '30968').
+    - period: 'day' (hourly readings for that day) | 'month' (daily readings for that month) |
+              'last30Days' (rolling 30 days) | 'last12Months' (monthly totals).
+    - date: Target date in 'YYYY-MM-DD' format (e.g. '2026-10-01' or '2026-11-15'). Defaults to current date.
+    """
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    data = get_veitur_consumption(utility="heitt-vatn", meter_id=meter_id, period=period, date=date)
+    return {
+        "meter": {
+            "name": "Heimilið - Hitaveita (Veitur)",
+            "meter_number": meter_id,
+            "provider": "Veitur",
+            "utility": "hot_water",
+            "unit": "m³"
+        },
+        "period": period,
+        "date": date,
+        "total_cubic_meters": data.get("total_usage", 0.0),
+        "readings_count": data.get("readings_count", 0),
+        "readings": data.get("readings", [])
+    }
+
+@mcp.tool()
+def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
+    """
+    Get recent invoices and claims across Orkusalan, RARIK, and Veitur.
     Returns invoice numbers, issue dates, due dates, amounts in ISK, and payment status.
 
     Parameters:
-    - limit: Maximum number of invoices to return (default: 6).
-    - provider: 'all' | 'orkusalan' | 'rarik' (default: 'all').
+    - limit: Maximum number of invoices to return (default: 10).
+    - provider: 'all' | 'orkusalan' | 'rarik' | 'veitur' (default: 'all').
     """
     all_invoices = []
     errors = []
@@ -303,7 +404,6 @@ def get_invoices(limit: int = 6, provider: str = "all") -> Dict[str, Any]:
             with get_rarik_client() as client:
                 res = client.get(f"/yfirlit/reikningar/?nationalId={national_id}")
                 if res.status_code == 200 and "login" not in str(res.url).lower():
-                    # Parse HTML table rows
                     from html.parser import HTMLParser
                     class RarikInvoiceParser(HTMLParser):
                         def __init__(self):
@@ -332,10 +432,9 @@ def get_invoices(limit: int = 6, provider: str = "all") -> Dict[str, Any]:
 
                     parser = RarikInvoiceParser()
                     parser.feed(res.text)
-                    for r in parser.rows[1:]:  # skip header
+                    for r in parser.rows[1:]:
                         if len(r) >= 6 and r[0].startswith("Or"):
                             inv_nr = r[0]
-                            # Check if not already included from Orkusalan
                             if not any(i.get("invoice_id") == inv_nr for i in all_invoices):
                                 all_invoices.append({
                                     "provider": "RARIK",
@@ -346,6 +445,7 @@ def get_invoices(limit: int = 6, provider: str = "all") -> Dict[str, Any]:
                                     "amount_isk": r[3],
                                     "remaining_balance": r[5],
                                     "settled_date": r[6] if len(r) > 6 else "",
+                                    "paid": True if (len(r) > 6 and r[6]) else False,
                                     "pdf_url": f"https://minarsidur.rarik.is/yfirlit/$Invoice/GetInvoicePDF/?invoiceNr={inv_nr}&nationalId={national_id}"
                                 })
                 else:
@@ -353,8 +453,16 @@ def get_invoices(limit: int = 6, provider: str = "all") -> Dict[str, Any]:
         except Exception as e:
             errors.append(f"RARIK invoices error: {e}")
 
-    # Sort descending by issued_date
-    all_invoices.sort(key=lambda x: str(x.get("issued_date", "")), reverse=True)
+    # 3. Fetch from Veitur
+    if provider in ["all", "veitur"]:
+        try:
+            v_invoices = get_veitur_invoices(limit=limit)
+            all_invoices.extend(v_invoices)
+        except Exception as e:
+            errors.append(f"Veitur invoices error: {e}")
+
+    # Sort descending by due_date
+    all_invoices.sort(key=lambda x: str(x.get("due_date", "")), reverse=True)
 
     return {
         "count": len(all_invoices[:limit]),

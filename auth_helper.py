@@ -16,7 +16,12 @@ def load_session() -> dict:
                 return json.load(f)
         except Exception:
             pass
-    return {"updated_at": None, "rarik": {"cookies": {}}, "orkusalan": {"cookies": {}}}
+    return {
+        "updated_at": None,
+        "rarik": {"cookies": {}},
+        "orkusalan": {"cookies": {}},
+        "veitur": {"cookies": {}}
+    }
 
 def save_session(session: dict):
     session["updated_at"] = datetime.now().isoformat()
@@ -29,7 +34,8 @@ def check_status() -> dict:
     results = {
         "timestamp": datetime.now().isoformat(),
         "rarik": {"valid": False, "details": ""},
-        "orkusalan": {"valid": False, "details": ""}
+        "orkusalan": {"valid": False, "details": ""},
+        "veitur": {"valid": False, "details": ""}
     }
 
     # 1. Check Orkusalan
@@ -65,6 +71,24 @@ def check_status() -> dict:
             results["rarik"]["details"] = f"Network error: {e}"
     else:
         results["rarik"]["details"] = "No .ASPXAUTH cookie found"
+
+    # 3. Check Veitur
+    veitur_cookies = session.get("veitur", {}).get("cookies", {})
+    if "veitur-service.session-token" in veitur_cookies:
+        try:
+            with httpx.Client(cookies=veitur_cookies, timeout=10.0) as client:
+                resp = client.get("https://minarsidur.veitur.is/api/auth/session")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    name = data.get("user", {}).get("name", "Active")
+                    results["veitur"]["valid"] = True
+                    results["veitur"]["details"] = f"Session active ({name})"
+                else:
+                    results["veitur"]["details"] = f"HTTP {resp.status_code} - Session expired"
+        except Exception as e:
+            results["veitur"]["details"] = f"Network error: {e}"
+    else:
+        results["veitur"]["details"] = "No veitur-service.session-token cookie found"
 
     return results
 
@@ -131,7 +155,6 @@ async def login_rarik_headed() -> bool:
         await page.goto("https://minarsidur.rarik.is")
         print("Please complete Electronic ID (Rafræn skilríki) login in the opened browser window...")
 
-        # Poll until .ASPXAUTH is present and URL is not on signet/login
         logged_in = False
         for _ in range(90):  # 3 minutes timeout
             await asyncio.sleep(2)
@@ -150,6 +173,35 @@ async def login_rarik_headed() -> bool:
         await browser.close()
         return logged_in
 
+async def login_veitur_headed() -> bool:
+    print("\n--- Launching Headed Browser for Veitur Login ---")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
+        page = await context.new_page()
+
+        print("Navigating to https://minarsidur.veitur.is...")
+        await page.goto("https://minarsidur.veitur.is")
+        print("Please complete Electronic ID (Rafræn skilríki) login in the opened browser window...")
+
+        logged_in = False
+        for _ in range(90):  # 3 minutes timeout
+            await asyncio.sleep(2)
+            cookies = await context.cookies()
+            auth_cookie = next((c for c in cookies if c["name"] == "veitur-service.session-token" and "veitur.is" in c["domain"]), None)
+            current_url = page.url
+            if auth_cookie and "yfirlit" in current_url:
+                logged_in = True
+                print("[+] Veitur authentication detected!")
+                session = load_session()
+                veitur_dict = {c["name"]: c["value"] for c in cookies if "veitur.is" in c["domain"]}
+                session.setdefault("veitur", {})["cookies"] = veitur_dict
+                save_session(session)
+                break
+
+        await browser.close()
+        return logged_in
+
 def main():
     action = sys.argv[1] if len(sys.argv) > 1 else "status"
     if action == "status":
@@ -162,6 +214,9 @@ def main():
     elif action == "rarik":
         success = asyncio.run(login_rarik_headed())
         sys.exit(0 if success else 1)
+    elif action == "veitur":
+        success = asyncio.run(login_veitur_headed())
+        sys.exit(0 if success else 1)
     elif action == "all":
         print("Checking current status...")
         st = check_status()
@@ -170,10 +225,12 @@ def main():
             login_orkusalan_cli(phone)
         if not st["rarik"]["valid"]:
             asyncio.run(login_rarik_headed())
+        if not st["veitur"]["valid"]:
+            asyncio.run(login_veitur_headed())
         print("Final Status:")
         print(json.dumps(check_status(), indent=2, ensure_ascii=False))
     else:
-        print("Usage: python auth_helper.py [status | orkusalan [phone] | rarik | all]")
+        print("Usage: python auth_helper.py [status | orkusalan [phone] | rarik | veitur | all]")
 
 if __name__ == "__main__":
     main()

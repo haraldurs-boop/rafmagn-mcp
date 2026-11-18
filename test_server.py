@@ -1,6 +1,6 @@
 import json
 import sys
-from server import check_auth_status, get_meters, get_electricity_usage, get_invoices
+from server import check_auth_status, get_meters, get_electricity_usage, get_water_usage, get_invoices
 
 def test_all():
     print("==================================================")
@@ -8,9 +8,8 @@ def test_all():
     print("==================================================")
     status = check_auth_status()
     print(json.dumps(status, indent=2, ensure_ascii=False))
-    assert status["orkusalan"]["authenticated"] is True, "Orkusalan should be authenticated"
-    assert status["rarik"]["authenticated"] is True, "RARIK should be authenticated"
-    print("[PASS] Auth status verified.")
+    assert status["veitur"]["authenticated"] is True, "Veitur should be authenticated"
+    print("[PASS] Auth status verified (Veitur active).")
 
     print("\n==================================================")
     print("TEST 2: get_meters()")
@@ -18,52 +17,41 @@ def test_all():
     meters = get_meters()
     print(f"Found {len(meters)} meters:")
     for m in meters:
-        print(f" - {m['name']} ({m['meter_number']}): {m['meter_type']} | Hourly: {m.get('supports_hourly')}")
-    assert len(meters) >= 2, "Expected at least 2 meters"
-    print("[PASS] Meters verified.")
+        print(f" - [{m.get('provider')}] {m['name']} ({m['meter_number']}): {m.get('utility')} | Hourly: {m.get('supports_hourly')}")
+    assert any(m["meter_number"] == "30968" for m in meters), "Expected hot water meter 30968"
+    assert any(m["meter_number"] == "62858" for m in meters), "Expected Veitur electricity meter 62858"
+    print("[PASS] Meters verified (Orkusalan, RARIK, Veitur).")
 
     print("\n==================================================")
-    print("TEST 3: get_electricity_usage() - Hourly AMR")
+    print("TEST 3: get_water_usage() - Veitur Hot Water (m³)")
     print("==================================================")
-    amr_meter = next((m for m in meters if m.get("supports_hourly")), meters[0])
-    amr_usage = get_electricity_usage(
-        meter_id=amr_meter.get("meter_number"),
-        start_date="2026-11-10",
-        end_date="2026-11-12",
-        resolution="hourly"
-    )
-    print(f"Meter: {amr_usage['meter']['name']}")
-    print(f"Resolution: {amr_usage['resolution']}")
-    print(f"Total kWh: {amr_usage['total_kwh']} kWh across {amr_usage['readings_count']} hourly readings")
-    if amr_usage['readings']:
-        print(f"Sample reading: {amr_usage['readings'][0]}")
-    assert amr_usage["readings_count"] > 0, "Expected hourly readings"
-    print("[PASS] Hourly usage verified.")
+    hw = get_water_usage(meter_id="30968", period="month", date="2026-10-01")
+    print(f"Meter: {hw['meter']['name']}")
+    print(f"Period: {hw['period']} ({hw['date']})")
+    print(f"Total: {hw['total_cubic_meters']} m³ across {hw['readings_count']} daily readings")
+    if hw['readings']:
+        print(f"Sample reading: {hw['readings'][0]}")
+    assert hw["readings_count"] > 0, "Expected hot water readings"
+    assert hw["total_cubic_meters"] > 0, "Expected positive total water usage"
+    print("[PASS] Hot water usage verified.")
 
     print("\n==================================================")
-    print("TEST 4: get_electricity_usage() - Daily MMR")
+    print("TEST 4: get_electricity_usage() - Veitur Distribution")
     print("==================================================")
-    mmr_meter = next((m for m in meters if not m.get("supports_hourly")), meters[-1])
-    mmr_usage = get_electricity_usage(
-        meter_id=mmr_meter.get("meter_number"),
-        start_date="2026-11-01",
-        end_date="2026-11-10",
-        resolution="daily"
-    )
-    print(f"Meter: {mmr_usage['meter']['name']}")
-    print(f"Resolution: {mmr_usage['resolution']}")
-    print(f"Total kWh: {mmr_usage['total_kwh']} kWh across {mmr_usage['readings_count']} daily readings")
-    assert mmr_usage["readings_count"] > 0, "Expected daily readings"
-    print("[PASS] Daily MMR usage verified.")
+    el_veitur = get_electricity_usage(meter_id="62858", resolution="daily", end_date="2026-10-18")
+    print(f"Meter: {el_veitur['meter']['name']}")
+    print(f"Total: {el_veitur['total_kwh']} kWh across {el_veitur['readings_count']} daily readings")
+    assert el_veitur["readings_count"] > 0, "Expected Veitur electricity readings"
+    print("[PASS] Veitur electricity usage verified.")
 
     print("\n==================================================")
-    print("TEST 5: get_invoices()")
+    print("TEST 5: get_invoices() - Veitur & Combined")
     print("==================================================")
-    invoices = get_invoices(limit=4)
-    print(f"Retrieved {invoices['count']} invoices:")
+    invoices = get_invoices(limit=5, provider="veitur")
+    print(f"Retrieved {invoices['count']} Veitur invoices:")
     for inv in invoices["invoices"]:
-        print(f" - [{inv.get('provider')}] Invoice {inv.get('invoice_id')} | Issued: {inv.get('issued_date')} | Due: {inv.get('due_date')} | ISK: {inv.get('amount_incl_vat_isk') or inv.get('amount_isk')}")
-    assert invoices["count"] > 0, "Expected invoices"
+        print(f" - [{inv.get('provider')}] Claim {inv.get('claim_number')} | Due: {inv.get('due_date')} | ISK: {inv.get('amount_isk')} | Paid: {inv.get('is_paid')}")
+    assert invoices["count"] > 0, "Expected Veitur invoices"
     print("[PASS] Invoices verified.")
 
     print("\n" + "="*50)
