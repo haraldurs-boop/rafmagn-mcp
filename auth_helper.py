@@ -72,23 +72,15 @@ def check_status() -> dict:
     else:
         results["rarik"]["details"] = "No .ASPXAUTH cookie found"
 
-    # 3. Check Veitur
-    veitur_cookies = session.get("veitur", {}).get("cookies", {})
-    if "veitur-service.session-token" in veitur_cookies:
-        try:
-            with httpx.Client(cookies=veitur_cookies, timeout=10.0) as client:
-                resp = client.get("https://minarsidur.veitur.is/api/auth/session")
-                if resp.status_code == 200:
-                    data = resp.json()
-                    name = data.get("user", {}).get("name", "Active")
-                    results["veitur"]["valid"] = True
-                    results["veitur"]["details"] = f"Session active ({name})"
-                else:
-                    results["veitur"]["details"] = f"HTTP {resp.status_code} - Session expired"
-        except Exception as e:
-            results["veitur"]["details"] = f"Network error: {e}"
+    # 3. Check Veitur (delegate to veitur_client so OIDC redirect tokens are detected)
+    from veitur_client import check_veitur_auth
+    v_status = check_veitur_auth()
+    if v_status.get("authenticated"):
+        name = (v_status.get("user") or {}).get("name", "Active")
+        results["veitur"]["valid"] = True
+        results["veitur"]["details"] = f"Session active ({name})"
     else:
-        results["veitur"]["details"] = "No veitur-service.session-token cookie found"
+        results["veitur"]["details"] = v_status.get("error", "Session expired or missing")
 
     return results
 
@@ -168,7 +160,7 @@ async def login_rarik_headed() -> bool:
                 rarik_dict = {c["name"]: c["value"] for c in cookies if "rarik.is" in c["domain"]}
                 session.setdefault("rarik", {})["cookies"] = rarik_dict
                 save_session(session)
-                os.system("scp .auth_session.json root@192.168.68.87:/opt/rafmagn-mcp/.auth_session.json")
+                os.system(f"scp '{AUTH_FILE}' root@192.168.68.87:/opt/rafmagn-mcp/.auth_session.json")
                 os.system("ssh root@192.168.68.87 'systemctl restart rafmagn-mcp.service rafmagn-dashboard.service'")
                 print("[+] RARIK session synchronized with r8q and services restarted!")
                 break
@@ -193,7 +185,9 @@ async def login_veitur_headed() -> bool:
             cookies = await context.cookies()
             auth_cookie = next((c for c in cookies if c["name"] == "veitur-service.session-token" and "veitur.is" in c["domain"]), None)
             current_url = page.url
-            if auth_cookie and "yfirlit" in current_url:
+            if auth_cookie and "minarsidur.veitur.is/yfirlit" in current_url:
+                await asyncio.sleep(2)
+                cookies = await context.cookies()
                 logged_in = True
                 print("[+] Veitur authentication detected!")
                 session = load_session()
@@ -203,7 +197,22 @@ async def login_veitur_headed() -> bool:
                 break
 
         await browser.close()
-        return logged_in
+
+    if logged_in:
+        from veitur_client import sync_veitur_history
+        print("[+] Syncing 12-month Veitur telemetry locally...")
+        sync_summary = sync_veitur_history()
+        print("[+] Local Veitur sync complete:", json.dumps(sync_summary, ensure_ascii=False))
+        os.system(f"scp '{AUTH_FILE}' root@192.168.68.87:/opt/rafmagn-mcp/.auth_session.json")
+        os.system(
+            "ssh root@192.168.68.87 "
+            "'cd /opt/rafmagn-mcp && .venv/bin/python3 veitur_client.py --sync && "
+            "rm -f /var/cache/rafmagn_dashboard.json && "
+            "systemctl restart rafmagn-mcp.service rafmagn-dashboard.service'"
+        )
+        print("[+] Veitur session & history synchronized with r8q and services restarted!")
+
+    return logged_in
 
 def main():
     action = sys.argv[1] if len(sys.argv) > 1 else "status"

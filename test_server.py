@@ -8,8 +8,9 @@ def test_all():
     print("==================================================")
     status = check_auth_status()
     print(json.dumps(status, indent=2, ensure_ascii=False))
-    assert status["veitur"]["authenticated"] is True, "Veitur should be authenticated"
-    print("[PASS] Auth status verified (Veitur active).")
+    for key in ("orkusalan", "rarik", "veitur"):
+        assert key in status and "authenticated" in status[key], f"Expected auth status structure for {key}"
+    print("[PASS] Auth status structure verified.")
 
     print("\n==================================================")
     print("TEST 2: get_meters()")

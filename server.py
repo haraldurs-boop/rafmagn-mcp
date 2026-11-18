@@ -264,7 +264,7 @@ def get_meters() -> List[Dict[str, Any]]:
             "meter_type": "Smart Water Meter (Snjallmælir)",
             "supports_hourly": True,
             "unit": "m³",
-            "note": "Geothermal hot water heating meter for Heimilið"
+            "note": "Geothermal hot water heating meter for Heimilið (Taxti H1A; monthly reading allocated evenly per day)"
         }
     ]
     meters_data.extend(veitur_meters)
@@ -474,7 +474,15 @@ def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
                         due_clean = _normalize_date(inv.get("dueDate"))
                         issued_clean = _normalize_date(inv.get("issuedDate"))
                         iid = str(inv.get("invoiceId"))
-                        loc = "Bústaður (Orkusalan orka)" if "10379380" in iid or "Or" in iid else "Heimili (Orkusalan orka)"
+                        loc_name = (inv.get("locationName") or "").strip()
+                        if "10379380" in iid or "sumar" in loc_name.lower() or "bústað" in loc_name.lower():
+                            loc = "Bústaður (Orkusalan orka)"
+                        elif "10619453" in iid or "blikahjall" in loc_name.lower():
+                            loc = "Heimili (Orkusalan orka)"
+                        elif loc_name:
+                            loc = f"{loc_name} (Orkusalan orka)"
+                        else:
+                            loc = "Orkusalan (raforkusala)"
                         all_invoices.append({
                             "provider": "Orkusalan",
                             "invoice_id": f"Orkusalan-{iid}",
@@ -537,7 +545,8 @@ def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
                             if not any(i.get("invoice_id") == f"RARIK-{inv_nr}" for i in all_invoices):
                                 issued_clean = _normalize_date(r[1])
                                 due_clean = _normalize_date(r[2])
-                                amt_num = float(r[3].replace(".", "").replace(",", ".")) if isinstance(r[3], str) else float(r[3])
+                                amt_str = re.sub(r"[^\d,]", "", str(r[3])).replace(",", ".")
+                                amt_num = float(amt_str) if amt_str else 0.0
                                 all_invoices.append({
                                     "provider": "RARIK",
                                     "invoice_id": f"RARIK-{inv_nr}",

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rafmagnsnotkunin okkar — Heimili og Sumarbústaður</title>
+  <title>Orkunotkunin okkar — Rafmagn og Heitt vatn</title>
   
   <!-- Inter font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,6 +29,8 @@
               blueLight: '#e0f2fe',
               green: '#059669',
               greenLight: '#d1fae5',
+              orange: '#ea580c',
+              orangeLight: '#ffedd5',
               gray: '#f8fafc',
               border: '#e2e8f0',
             }
@@ -47,14 +49,14 @@
     <!-- HEADER -->
     <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
       <div>
-        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Rafmagnsnotkunin okkar</h1>
-        <p class="text-sm md:text-base text-slate-500 mt-1 flex items-center gap-2">
-          <span>Samantekt fyrir heimili og sumarbústað</span>
+        <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Orkunotkunin okkar</h1>
+        <p class="text-sm md:text-base text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+          <span>Rafmagn og heitt vatn fyrir heimili og sumarbústað</span>
           <span class="text-slate-300">·</span>
           <span id="last-updated-text" class="text-xs text-slate-400">Uppfæri...</span>
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <a href="/" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-sm transition" title="Aftur í B12 Fjölskyldu-Hub">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           B12 Hub
@@ -74,9 +76,9 @@
           </span>
         </div>
         
-        <button onclick="fetchData()" class="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-full shadow-sm transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Uppfæra
+        <button id="refresh-btn" onclick="fetchData(true)" class="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-3.5 py-1.5 rounded-full shadow-sm transition">
+          <svg id="refresh-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span id="refresh-label">Uppfæra</span>
         </button>
       </div>
     </header>
@@ -102,100 +104,214 @@
       </div>
     </div>
 
-    <!-- TOP ROW: TWO SUMMARY CARDS -->
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- TOP ROW: THREE SUMMARY CARDS -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
-      <!-- HEIMILIÐ CARD -->
-      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+      <!-- CARD 1: HEIMILIÐ — RAFMAGN -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition">
         <div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-              Heimilið
+              Heimilið · Rafmagn
             </span>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-400 font-mono" id="home-meter">AMR mælir</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-400 font-mono" id="home-meter">200-6092777587</span>
               <span id="home-source-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">Gagnagrunnur</span>
             </div>
-          </div>          
-          <h2 class="text-base font-medium text-slate-700 mt-3" id="home-address">Aðalheimili</h2>
+          </div>
           
-          <div class="mt-6 flex items-baseline gap-2">
-            <span class="text-4xl md:text-5xl font-bold tracking-tight text-slate-900" id="home-kwh">514</span>
+          <h2 class="text-sm font-medium text-slate-600 mt-3" id="home-address">Aðalheimili · Orkusalan &amp; Veitur</h2>
+          
+          <div class="mt-5 flex items-baseline gap-2">
+            <span class="text-4xl font-bold tracking-tight text-slate-900" id="home-kwh">514</span>
             <span class="text-lg font-medium text-slate-500">kWh</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1" id="home-month-label">Notkun í síðasta mánuði (október 2026)</p>
-          <p class="text-xs text-sky-700 mt-1.5 font-medium flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Hitaveita (Veitur): <span id="home-water" class="font-bold">52,7</span> m³
-          </p>
+          <p class="text-xs text-slate-400 mt-1" id="home-month-label">Notkun í október 2026 · <span id="home-daily-avg">16,6</span> kWh/dag</p>
         </div>
 
-        <div class="mt-6 pt-5 border-t border-slate-100 space-y-3">
-          <!-- YoY Comparison -->
-          <div class="flex items-center justify-between text-sm">
+        <div class="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
             <span class="text-slate-500">Sami mánuður í fyrra:</span>
-            <span id="home-yoy-pill" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-              ↑ 5,7% (28 kWh) meira
+            <span id="home-yoy-pill" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              ↑ 5,7% (27,7 kWh) meira
             </span>
           </div>
-          
-          <!-- Multi-Year Average -->
           <div class="flex items-center justify-between text-xs text-slate-500">
             <span>Meðaltal síðustu ára:</span>
-            <span class="font-medium text-slate-700" id="home-multi-avg">486,0 kWh (5,7% yfir)</span>
+            <span class="font-medium text-slate-700" id="home-multi-avg">486 kWh (5,7% yfir)</span>
           </div>
         </div>
       </div>
 
-      <!-- SUMARBÚSTAÐURINN CARD -->
-      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+      <!-- CARD 2: HEIMILIÐ — HEITT VATN -->
+      <div class="bg-white rounded-2xl p-6 border border-orange-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition">
         <div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+              Heimilið · Heitt vatn
+            </span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-400 font-mono" id="water-meter">4081726607</span>
+              <span id="water-source-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">Gagnagrunnur</span>
+            </div>
+          </div>
+          
+          <h2 class="text-sm font-medium text-slate-600 mt-3" id="water-subtitle">Hitaveita · Veitur (Taxti H1A)</h2>
+          
+          <div class="mt-5 flex items-baseline gap-2">
+            <span class="text-4xl font-bold tracking-tight text-slate-900" id="water-m3">52,7</span>
+            <span class="text-lg font-medium text-slate-500">m³</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Notkun í október 2026 · <span id="water-daily-avg">1,70</span> m³/dag</p>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+          <div class="flex items-center justify-between text-xs" id="water-yoy-row">
+            <span class="text-slate-500" id="water-yoy-label">Álestrar (okt):</span>
+            <span class="font-medium text-slate-700 font-mono text-[11px]" id="water-yoy-value">1.330,10 → 1.382,84 m³</span>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Kostnaður (okt):</span>
+            <span class="font-semibold text-orange-700" id="water-card-cost">15.160 kr. (~288 kr./m³)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 3: SUMARBÚSTAÐURINN — RAFMAGN -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+        <div>
+          <div class="flex items-center justify-between gap-2">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-              Sumarbústaðurinn
+              Bústaður · Rafmagn
             </span>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-400 font-mono" id="cottage-meter">MMR mælir</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-400 font-mono" id="cottage-meter">101-36815202</span>
               <span id="cottage-source-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">Gagnagrunnur</span>
             </div>
           </div>
           
-          <h2 class="text-base font-medium text-slate-700 mt-3" id="cottage-address">Sumarbústaður</h2>
+          <h2 class="text-sm font-medium text-slate-600 mt-3" id="cottage-address">Sumarbústaður · Orkusalan &amp; RARIK</h2>
           
-          <div class="mt-6 flex items-baseline gap-2">
-            <span class="text-4xl md:text-5xl font-bold tracking-tight text-slate-900" id="cottage-kwh">520</span>
+          <div class="mt-5 flex items-baseline gap-2">
+            <span class="text-4xl font-bold tracking-tight text-slate-900" id="cottage-kwh">251</span>
             <span class="text-lg font-medium text-slate-500">kWh</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1" id="cottage-month-label">Notkun í síðasta mánuði (október 2026)</p>
+          <p class="text-xs text-slate-400 mt-1" id="cottage-month-label">Notkun í október 2026 · <span id="cottage-daily-avg">8,1</span> kWh/dag</p>
         </div>
 
-        <div class="mt-6 pt-5 border-t border-slate-100 space-y-3">
-          <!-- YoY Comparison -->
-          <div class="flex items-center justify-between text-sm">
+        <div class="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
             <span class="text-slate-500">Sami mánuður í fyrra:</span>
-            <span id="cottage-yoy-pill" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              ↓ 14,3% (87 kWh) minna
+            <span id="cottage-yoy-pill" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              ↓ 14,3% (42 kWh) minna
             </span>
           </div>
-          
-          <!-- Multi-Year Average -->
           <div class="flex items-center justify-between text-xs text-slate-500">
             <span>Meðaltal síðustu ára:</span>
-            <span class="font-medium text-slate-700" id="cottage-multi-avg">679,1 kWh (23,4% undir)</span>
+            <span class="font-medium text-slate-700" id="cottage-multi-avg">326 kWh (23% undir)</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- MIDDLE ROW: CHART & COST OVERVIEW -->
+    <!-- ROW 2: DEDICATED HOT WATER OVERVIEW (12-MONTH CHART + TARIFF ANALYSIS) -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
-      <!-- DAILY USAGE BAR CHART (2/3 width) -->
+      <!-- 12-MONTH HOT WATER CHART (2/3 width) -->
+      <div class="lg:col-span-2 bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">Heitt vatn — Mánaðarnotkun (síðustu 12 mánuðir)</h3>
+              <p class="text-xs text-slate-500">Árstíðasveifla hitaveitu hjá Veitum · Mælir 4081726607 (fastanr. 30968)</p>
+            </div>
+            <span id="water-granularity-badge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
+              Mánaðarálestur (jafndreift dagmeðaltal)
+            </span>
+          </div>
+
+          <div id="water-history-notice" class="hidden mt-3 px-3.5 py-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-800">
+            12 mánaða saga birtist sjálfkrafa um leið og Veitur-innskráning hefur verið endurnýjuð og sótt í staðbundna grunninn.
+          </div>
+        </div>
+
+        <div class="h-64 sm:h-72 mt-4 relative">
+          <canvas id="hotWaterChart"></canvas>
+        </div>
+      </div>
+
+      <!-- HOT WATER TARIFF & STATS BREAKDOWN (1/3 width) -->
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between">
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">Hitaveita — Greining og Verðskrá</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Sundurliðun Veitna (Taxti H1A)</p>
+
+          <!-- 12-Month Stats Mini-Grid -->
+          <div class="grid grid-cols-3 gap-2.5 mt-5">
+            <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-center">
+              <div class="text-[10px] text-slate-500 font-medium">12 mán. samtals</div>
+              <div class="text-sm font-bold text-slate-900 mt-0.5" id="water-stat-annual">—</div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-center">
+              <div class="text-[10px] text-slate-500 font-medium">Meðaltal/mán.</div>
+              <div class="text-sm font-bold text-slate-900 mt-0.5" id="water-stat-avg">—</div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-center">
+              <div class="text-[10px] text-slate-500 font-medium">Hæsti mánuður</div>
+              <div class="text-xs font-bold text-orange-700 mt-1" id="water-stat-peak">—</div>
+            </div>
+          </div>
+
+          <!-- Tariff Cost Breakdown (Oct 2026) -->
+          <div class="mt-5 space-y-2.5 text-xs">
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
+              <span class="text-slate-600">Fast gjald (90 kr./dag × 31)</span>
+              <span class="font-medium text-slate-900" id="water-fee-fixed">2.790 kr.</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
+              <span class="text-slate-600">Notkun (<span id="water-unit-price">200,99</span> kr./m³ án VSK)</span>
+              <span class="font-medium text-slate-900" id="water-fee-usage">10.600 kr.</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
+              <span class="text-slate-600">Orkuskattur (2%) &amp; VSK (11%)</span>
+              <span class="font-medium text-slate-900" id="water-fee-tax">1.770 kr.</span>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="font-semibold text-slate-900">Samtals heitt vatn (okt)</span>
+              <span class="text-sm font-bold text-orange-700" id="water-fee-total">15.160 kr.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Home Energy Share Bar -->
+        <div class="mt-6 pt-4 border-t border-slate-100">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-medium text-slate-700">Hlutfall kostnaðar á heimilinu</span>
+            <span class="text-slate-500" id="home-share-summary">53,5% vatn · 46,5% rafmagn</span>
+          </div>
+          <div class="w-full h-2.5 bg-sky-100 rounded-full overflow-hidden flex">
+            <div id="share-bar-water" class="bg-orange-500 h-full transition-all" style="width: 53.5%"></div>
+            <div id="share-bar-elec" class="bg-sky-500 h-full transition-all" style="width: 46.5%"></div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Heitt vatn</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-500"></span> Rafmagn (orka + dreifing)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROW 3: DAILY ELECTRICITY BAR CHART & FULL 3-PROVIDER COST OVERVIEW -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- DAILY ELECTRICITY USAGE BAR CHART (2/3 width) -->
       <div class="lg:col-span-2 bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
           <div>
-            <h3 class="text-base font-semibold text-slate-900">Dagleg notkun í október 2026</h3>
+            <h3 class="text-base font-semibold text-slate-900">Dagleg rafmagnsnotkun í október 2026</h3>
             <p class="text-xs text-slate-500">Heimili: AMR rauntímagögn | Bústaður: MMR jafndreift mánaðarmeðaltal</p>
           </div>
           <div class="flex items-center gap-4 text-xs">
@@ -209,38 +325,54 @@
         </div>
       </div>
 
-      <!-- COST & SAVINGS CARD (1/3 width) -->
+      <!-- FULL 3-PROVIDER COST & INSIGHT CARD (1/3 width) -->
       <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">Áætlaður kostnaður og sparnaður</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Raforku- og dreifikostnaður í október</p>
+          <h3 class="text-base font-semibold text-slate-900">Heildarorkukostnaður — Október 2026</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Sala, dreifing og hitaveita samanlagt</p>
 
-          <div class="mt-6 space-y-3.5">
-            <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-sm text-slate-600 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-sky-500"></span> Heimilið
-              </span>
-              <span class="text-sm font-semibold text-slate-900" id="cost-home">5.046 kr.</span>
+          <div class="mt-5 space-y-3.5">
+            <div class="py-2 border-b border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-slate-700 font-medium flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-sky-500"></span> Heimilið — Rafmagn
+                </span>
+                <span class="text-sm font-semibold text-slate-900" id="cost-home-elec">13.173 kr.</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 pl-4" id="cost-home-elec-sub">Orkusalan 5.046 kr. + Veitur dreifing 8.127 kr.</p>
+            </div>
+
+            <div class="py-2 border-b border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-slate-700 font-medium flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-orange-500"></span> Heimilið — Heitt vatn
+                </span>
+                <span class="text-sm font-semibold text-slate-900" id="cost-home-water">15.160 kr.</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 pl-4" id="cost-home-water-sub">Veitur hitaveita (52,7 m³)</p>
             </div>
             
-            <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-sm text-slate-600 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Sumarbústaðurinn
-              </span>
-              <span class="text-sm font-semibold text-slate-900" id="cost-cottage">4.652 kr.</span>
+            <div class="py-2 border-b border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-slate-700 font-medium flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Bústaður — Rafmagn
+                </span>
+                <span class="text-sm font-semibold text-slate-900" id="cost-cottage">15.480 kr.</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5 pl-4" id="cost-cottage-sub">Orkusalan 4.652 kr. + RARIK flutningur 10.828 kr.</p>
             </div>
 
             <div class="flex items-center justify-between pt-1">
-              <span class="text-sm font-medium text-slate-900">Samtals október</span>
-              <span class="text-base font-bold text-slate-900" id="cost-total">9.698 kr.</span>
+              <span class="text-sm font-semibold text-slate-900">Samtals október</span>
+              <span class="text-base font-bold text-slate-900" id="cost-total">43.813 kr.</span>
             </div>
           </div>
         </div>
 
         <!-- Dynamic Insight -->
-        <div class="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200/60 text-xs leading-relaxed text-slate-600">
+        <div class="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200/60 text-xs leading-relaxed text-slate-600">
           <span class="font-semibold text-slate-800 block mb-1">💡 Samantekt:</span>
-          <p id="insight-text">Notkun í sumarbústaðnum dróst saman um 14,3% miðað við sama mánuð í fyrra og er um 23% undir meðaltali fyrri ára.</p>
+          <p id="insight-text">Heita vatnið (52,7 m³ / 15.160 kr.) stendur undir 53,5% af orkukostnaði heimilisins í október.</p>
         </div>
       </div>
     </section>
@@ -248,15 +380,15 @@
     <!-- BOTTOM ROW: RECENT INVOICES -->
     <section class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
       <div class="p-6 md:p-8 pb-4">
-        <h3 class="text-base font-semibold text-slate-900">Síðustu reikningar (Orkusalan)</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Yfirlit yfir nýjustu útgefna rafmagnsreikninga</p>
+        <h3 class="text-base font-semibold text-slate-900">Síðustu reikningar (Orkusalan, Veitur &amp; RARIK)</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Yfirlit yfir nýjustu rafmagns-, dreifingar- og hitaveitureikninga</p>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm text-slate-700">
           <thead class="bg-slate-50/80 text-xs font-medium text-slate-500 border-y border-slate-200/80">
             <tr>
-              <th class="py-3 px-6">Staðsetning</th>
+              <th class="py-3 px-6">Veita &amp; Staðsetning</th>
               <th class="py-3 px-6">Tímabil</th>
               <th class="py-3 px-6">Útgáfudagur</th>
               <th class="py-3 px-6">Gjalddagi</th>
@@ -274,7 +406,7 @@
 
     <!-- FOOTER -->
     <footer class="pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
-      <p>Rafmagnsmælaborð — Keyrir á FastMCP & Orkusalan / RARIK API</p>
+      <p>Orkumælaborð — Keyrir á FastMCP &amp; Orkusalan / RARIK / Veitur API</p>
     </footer>
 
   </div>
@@ -282,15 +414,48 @@
   <!-- SCRIPT -->
   <script>
     let chartInstance = null;
+    let waterChartInstance = null;
 
-    async function fetchData() {
+    function formatIsNumber(num, decimals = 0) {
+      if (num === null || num === undefined || Number.isNaN(Number(num))) return '—';
+      return Number(num).toLocaleString('is-IS', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    async function fetchData(force = false) {
+      const btn = document.getElementById('refresh-btn');
+      const icon = document.getElementById('refresh-icon');
+      const label = document.getElementById('refresh-label');
+      if (btn) btn.disabled = true;
+      if (icon) icon.classList.add('animate-spin');
+      if (label && force) label.innerText = 'Sæki...';
+
       try {
-        const res = await fetch('/api/dashboard-data');
+        const url = force ? '/api/dashboard-data?force=1' : '/api/dashboard-data';
+        const res = await fetch(url);
         if (!res.ok) throw new Error('API villa: ' + res.status);
         const data = await res.json();
         renderDashboard(data);
       } catch (err) {
         console.error('Villa við að sækja gögn:', err);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (icon) icon.classList.remove('animate-spin');
+        if (label) label.innerText = 'Uppfæra';
+      }
+    }
+
+    function setSourceBadge(elId, isLive) {
+      const badge = document.getElementById(elId);
+      if (!badge) return;
+      if (isLive) {
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+        badge.innerText = 'Rauntími';
+      } else {
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200';
+        badge.innerText = 'Gagnagrunnur';
       }
     }
 
@@ -308,84 +473,189 @@
       document.getElementById('rar-status').innerHTML = `<span class="w-2 h-2 rounded-full ${rarDot}"></span> RARIK`;
       document.getElementById('veitur-status').innerHTML = `<span class="w-2 h-2 rounded-full ${veiturDot}"></span> Veitur`;
 
-      // Warning Banner if any provider is disconnected
       const banner = document.getElementById('offline-banner');
       const bannerText = document.getElementById('offline-banner-text');
       if (data.auth_status.offline_providers && data.auth_status.offline_providers.length > 0) {
         banner.classList.remove('hidden');
-        const names = data.auth_status.offline_providers.join(' og ');
+        const names = data.auth_status.offline_providers.join(', ');
         bannerText.innerHTML = `Setukökur/tenging við <strong>${names}</strong> eru útrunnar eða ótengdar. Sýndar tölur og reikningar koma úr staðbundna SQLite gagnagrunninum (telemetry.db). Endurnýjaðu auðkenningu með <code>python auth_helper.py all</code> á netþjóninum.`;
       } else {
         banner.classList.add('hidden');
       }
 
-      // 2. Heimilið Card
+      // 2. Card 1: Heimilið — Rafmagn
       document.getElementById('home-meter').innerText = data.home.meter_number;
-      document.getElementById('home-address').innerText = data.home.address;
-      document.getElementById('home-kwh').innerText = Math.round(data.home.month_kwh).toLocaleString('is-IS');
-      if (document.getElementById('home-water') && data.home.month_hot_water_m3) {
-        document.getElementById('home-water').innerText = data.home.month_hot_water_m3.toLocaleString('is-IS');
-      }
+      document.getElementById('home-kwh').innerText = formatIsNumber(Math.round(data.home.month_kwh));
+      document.getElementById('home-daily-avg').innerText = formatIsNumber(data.home.daily_avg, 1);
+      setSourceBadge('home-source-badge', data.home.is_live);
 
-      const homeBadge = document.getElementById('home-source-badge');
-      if (homeBadge) {
-        if (data.home.is_live) {
-          homeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
-          homeBadge.innerText = 'Rauntími';
-        } else {
-          homeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200';
-          homeBadge.innerText = 'Gagnagrunnur';
-        }
-      }
-      
       const homeYoy = document.getElementById('home-yoy-pill');
       if (data.home.yoy_decreased) {
-        homeYoy.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-        homeYoy.innerText = `↓ ${data.home.yoy_diff_pct}% (${data.home.yoy_diff_kwh} kWh) minna`;
+        homeYoy.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        homeYoy.innerText = `↓ ${formatIsNumber(data.home.yoy_diff_pct, 1)}% (${formatIsNumber(data.home.yoy_diff_kwh, 1)} kWh) minna`;
       } else {
-        homeYoy.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200';
-        homeYoy.innerText = `↑ ${data.home.yoy_diff_pct}% (${data.home.yoy_diff_kwh} kWh) meira`;
+        homeYoy.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+        homeYoy.innerText = `↑ ${formatIsNumber(data.home.yoy_diff_pct, 1)}% (${formatIsNumber(data.home.yoy_diff_kwh, 1)} kWh) meira`;
       }
-      document.getElementById('home-multi-avg').innerText = `${data.home.multi_year_avg} kWh (${data.home.multi_year_diff_pct}% yfir)`;
+      document.getElementById('home-multi-avg').innerText = `${formatIsNumber(data.home.multi_year_avg)} kWh (${formatIsNumber(data.home.multi_year_diff_pct, 1)}% yfir)`;
 
-      // 3. Sumarbústaðurinn Card
-      document.getElementById('cottage-meter').innerText = data.cottage.meter_number;
-      document.getElementById('cottage-address').innerText = data.cottage.address;
-      document.getElementById('cottage-kwh').innerText = Math.round(data.cottage.month_kwh).toLocaleString('is-IS');
+      // 3. Card 2 & Dedicated Section: Heimilið — Heitt vatn
+      const hw = data.hot_water || {};
+      document.getElementById('water-meter').innerText = hw.meter_number || '4081726607';
+      document.getElementById('water-subtitle').innerText = `Hitaveita · Veitur (${hw.tariff || 'Almenn notkun H1A'})`;
+      document.getElementById('water-m3').innerText = formatIsNumber(hw.month_m3, 1);
+      document.getElementById('water-daily-avg').innerText = formatIsNumber(hw.daily_avg_m3, 2);
+      setSourceBadge('water-source-badge', hw.is_live);
 
-      const cottageBadge = document.getElementById('cottage-source-badge');
-      if (cottageBadge) {
-        if (data.cottage.is_live) {
-          cottageBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
-          cottageBadge.innerText = 'Rauntími';
+      const waterYoyRow = document.getElementById('water-yoy-row');
+      if (hw.yoy_m3 !== null && hw.yoy_m3 !== undefined) {
+        const pillCls = hw.yoy_decreased
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-amber-50 text-amber-700 border-amber-200';
+        const arrow = hw.yoy_decreased ? '↓' : '↑';
+        const word = hw.yoy_decreased ? 'minna' : 'meira';
+        waterYoyRow.innerHTML = `
+          <span class="text-slate-500">Sami mánuður í fyrra:</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${pillCls}">
+            ${arrow} ${formatIsNumber(hw.yoy_diff_pct, 1)}% (${formatIsNumber(hw.yoy_diff_m3, 1)} m³) ${word}
+          </span>
+        `;
+      } else {
+        waterYoyRow.innerHTML = `
+          <span class="text-slate-500">Álestrar (okt):</span>
+          <span class="font-medium text-slate-700 font-mono text-[11px]">${hw.latest_reading_range || '1.330,10 → 1.382,84 m³'}</span>
+        `;
+      }
+      document.getElementById('water-card-cost').innerText =
+        `${formatIsNumber(hw.latest_cost_isk || 15160)} kr. (~${formatIsNumber(hw.effective_unit_isk || 288)} kr./m³)`;
+
+      // Hot water deep-dive stats & tariff breakdown
+      const granBadge = document.getElementById('water-granularity-badge');
+      if (granBadge) {
+        if (hw.is_daily_uniform) {
+          granBadge.innerText = 'Mánaðarálestur (jafndreift dagmeðaltal)';
         } else {
-          cottageBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200';
-          cottageBadge.innerText = 'Gagnagrunnur';
+          granBadge.innerText = 'Rauntímamælir';
         }
       }
-      
+      const hwNotice = document.getElementById('water-history-notice');
+      if (hwNotice) {
+        if (hw.has_12m_history) hwNotice.classList.add('hidden');
+        else hwNotice.classList.remove('hidden');
+      }
+      document.getElementById('water-stat-annual').innerText = hw.annual_total_m3 ? `${formatIsNumber(hw.annual_total_m3, 1)} m³` : '—';
+      document.getElementById('water-stat-avg').innerText = hw.monthly_avg_m3 ? `${formatIsNumber(hw.monthly_avg_m3, 1)} m³` : '—';
+      document.getElementById('water-stat-peak').innerText = hw.peak_month_m3 ? `${hw.peak_month_label} · ${formatIsNumber(hw.peak_month_m3, 1)} m³` : '—';
+
+      document.getElementById('water-fee-fixed').innerText = `${formatIsNumber(hw.fixed_fee_isk || 2790)} kr.`;
+      document.getElementById('water-unit-price').innerText = formatIsNumber(hw.unit_price_excl_vat || 200.99, 2);
+      document.getElementById('water-fee-usage').innerText = `${formatIsNumber(hw.usage_fee_isk || 10600)} kr.`;
+      document.getElementById('water-fee-tax').innerText = `${formatIsNumber(hw.tax_and_vat_isk || 1770)} kr.`;
+      document.getElementById('water-fee-total').innerText = `${formatIsNumber(hw.latest_cost_isk || 15160)} kr.`;
+
+      // 4. Card 3: Sumarbústaðurinn — Rafmagn
+      document.getElementById('cottage-meter').innerText = data.cottage.meter_number;
+      document.getElementById('cottage-kwh').innerText = formatIsNumber(Math.round(data.cottage.month_kwh));
+      document.getElementById('cottage-daily-avg').innerText = formatIsNumber(data.cottage.daily_avg, 1);
+      setSourceBadge('cottage-source-badge', data.cottage.is_live);
+
       const cotYoy = document.getElementById('cottage-yoy-pill');
       if (data.cottage.yoy_decreased) {
-        cotYoy.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-        cotYoy.innerText = `↓ ${data.cottage.yoy_diff_pct}% (${data.cottage.yoy_diff_kwh} kWh) minna`;
+        cotYoy.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        cotYoy.innerText = `↓ ${formatIsNumber(data.cottage.yoy_diff_pct, 1)}% (${formatIsNumber(data.cottage.yoy_diff_kwh, 0)} kWh) minna`;
       } else {
-        cotYoy.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200';
-        cotYoy.innerText = `↑ ${data.cottage.yoy_diff_pct}% (${data.cottage.yoy_diff_kwh} kWh) meira`;
+        cotYoy.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+        cotYoy.innerText = `↑ ${formatIsNumber(data.cottage.yoy_diff_pct, 1)}% (${formatIsNumber(data.cottage.yoy_diff_kwh, 0)} kWh) meira`;
       }
-      document.getElementById('cottage-multi-avg').innerText = `${data.cottage.multi_year_avg} kWh (${data.cottage.multi_year_diff_pct}% undir)`;
+      document.getElementById('cottage-multi-avg').innerText = `${formatIsNumber(data.cottage.multi_year_avg)} kWh (${formatIsNumber(data.cottage.multi_year_diff_pct, 1)}% undir)`;
 
-      // 4. Cost Overview & Insight
-      document.getElementById('cost-home').innerText = `${data.home.latest_cost_isk.toLocaleString('is-IS')} kr.`;
-      document.getElementById('cost-cottage').innerText = `${data.cottage.latest_cost_isk.toLocaleString('is-IS')} kr.`;
-      const totalCost = data.home.latest_cost_isk + data.cottage.latest_cost_isk;
-      document.getElementById('cost-total').innerText = `${totalCost.toLocaleString('is-IS')} kr.`;
+      // 5. Full 3-Provider Cost Breakdown & Home Share Bar
+      const costs = data.costs || {};
+      const hwShare = costs.hot_water_home_share_pct ?? 53.5;
+      const elShare = Math.max(0, Number((100 - hwShare).toFixed(1)));
+      document.getElementById('home-share-summary').innerText = `${formatIsNumber(hwShare, 1)}% vatn · ${formatIsNumber(elShare, 1)}% rafmagn`;
+      document.getElementById('share-bar-water').style.width = `${hwShare}%`;
+      document.getElementById('share-bar-elec').style.width = `${elShare}%`;
+
+      document.getElementById('cost-home-elec').innerText = `${formatIsNumber(costs.home_elec_total_isk || 13173)} kr.`;
+      document.getElementById('cost-home-elec-sub').innerText = `Orkusalan ${formatIsNumber(costs.home_elec_retail_isk || 5046)} kr. + Veitur dreifing ${formatIsNumber(costs.home_elec_dist_isk || 8127)} kr.`;
+      document.getElementById('cost-home-water').innerText = `${formatIsNumber(costs.home_hot_water_isk || 15160)} kr.`;
+      document.getElementById('cost-home-water-sub').innerText = `Veitur hitaveita (${formatIsNumber(hw.month_m3 || 52.7, 1)} m³)`;
+      document.getElementById('cost-cottage').innerText = `${formatIsNumber(costs.cottage_total_isk || 15480)} kr.`;
+      document.getElementById('cost-cottage-sub').innerText = `Orkusalan ${formatIsNumber(costs.cottage_elec_retail_isk || 4652)} kr. + RARIK flutningur ${formatIsNumber(costs.cottage_elec_dist_isk || 10828)} kr.`;
+      document.getElementById('cost-total').innerText = `${formatIsNumber(costs.grand_total_isk || 43813)} kr.`;
       document.getElementById('insight-text').innerText = data.insight;
 
-      // 5. Daily Chart
+      // 6. Charts & Invoices
+      renderHotWaterChart(hw);
       renderChart(data.chart);
-
-      // 6. Invoices Table
       renderInvoices(data.invoices);
+    }
+
+    function renderHotWaterChart(hw) {
+      const ctx = document.getElementById('hotWaterChart').getContext('2d');
+      if (waterChartInstance) waterChartInstance.destroy();
+
+      const labels = hw.monthly_labels || ["okt '26"];
+      const values = hw.monthly_values || [hw.month_m3 || 52.7];
+      const unitCost = hw.effective_unit_isk || 288;
+
+      waterChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Heitt vatn (m³)',
+              data: values,
+              backgroundColor: 'rgba(234, 88, 12, 0.82)',
+              hoverBackgroundColor: 'rgba(234, 88, 12, 1)',
+              borderRadius: 6,
+              maxBarThickness: 44
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              padding: 10,
+              cornerRadius: 8,
+              titleFont: { size: 12, weight: '600' },
+              bodyFont: { size: 12 },
+              callbacks: {
+                label: function(context) {
+                  const val = Number(context.raw || 0);
+                  const approxCost = formatIsNumber(Math.round(val * unitCost));
+                  return ` ${formatIsNumber(val, 1)} m³ (~${approxCost} kr.)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { size: 11 },
+                color: '#64748b'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              border: { dash: [4, 4] },
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                font: { size: 11 },
+                color: '#64748b',
+                callback: function(value) { return value + ' m³'; }
+              }
+            }
+          }
+        }
+      });
     }
 
     function renderChart(chartData) {
@@ -467,21 +737,24 @@
 
       tbody.innerHTML = invoices.map(inv => {
         let locBadge = '';
-        if (inv.location && inv.location.includes('Veitur')) {
-          locBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">Heimili (Veitur flutningur/vatn)</span>';
-        } else if (inv.provider === 'RARIK' || (inv.location && inv.location.includes('RARIK'))) {
-          locBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">Bústaður (RARIK flutningur)</span>';
-        } else if (inv.location === 'Heimili') {
-          locBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">Heimili (Orkusalan orka)</span>';
+        const loc = inv.location || '';
+        if (inv.provider === 'Veitur' || loc.includes('Veitur')) {
+          locBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">${loc || 'Heimili (Veitur flutningur/vatn)'}</span>`;
+        } else if (inv.provider === 'RARIK' || loc.includes('RARIK')) {
+          locBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">${loc || 'Bústaður (RARIK flutningur)'}</span>`;
+        } else if (loc.includes('Heimili')) {
+          locBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">${loc}</span>`;
+        } else if (loc.includes('Bústaður')) {
+          locBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">${loc}</span>`;
         } else {
-          locBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">Bústaður (Orkusalan orka)</span>';
+          locBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-sky-50 text-sky-700 border border-sky-100">${loc || 'Orkusalan (raforkusala)'}</span>`;
         }
         
         const paidBadge = inv.paid
           ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Greitt</span>'
           : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Ógreitt</span>';
 
-        const viewLink = inv.url
+        const viewLink = inv.url && inv.url !== '#'
           ? `<a href="${inv.url}" target="_blank" class="text-xs font-medium text-sky-600 hover:text-sky-800 hover:underline">Skoða</a>`
           : '<span class="text-xs text-slate-400">—</span>';
 
@@ -499,8 +772,8 @@
       }).join('');
     }
 
-    // Initial load
-    fetchData();
+    // Load immediately on startup
+    document.addEventListener('DOMContentLoaded', () => fetchData(false));
   </script>
 </body>
 </html>
