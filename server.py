@@ -11,6 +11,13 @@ from veitur_client import (
     get_veitur_consumption,
     get_veitur_invoices
 )
+from database import (
+    save_meter,
+    save_readings,
+    get_readings,
+    save_invoices,
+    get_invoices_from_db
+)
 
 # Initialize FastMCP Server
 mcp_host = os.environ.get("MCP_HOST", "0.0.0.0")
@@ -55,6 +62,17 @@ def get_rarik_client() -> httpx.Client:
         },
         timeout=15.0
     )
+
+def _normalize_date(d_str: str) -> str:
+    """Normalize date strings (e.g. '02.11.2026' or '2026-11-02T00:00:00') to 'YYYY-MM-DD'."""
+    if not d_str:
+        return ""
+    d_clean = d_str.strip()
+    if "." in d_clean:
+        parts = d_clean.split(".")
+        if len(parts) == 3:
+            return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+    return d_clean[:10]
 
 @mcp.tool()
 def check_auth_status() -> Dict[str, Any]:
@@ -118,22 +136,35 @@ def get_meters() -> List[Dict[str, Any]]:
     """
     Get all electricity and utility meters associated with the customer profile across
     Orkusalan, RARIK, and Veitur.
-    Provides meter IDs, utility types (Electricity vs Hot Water), addresses, and capabilities.
+    Provides meter IDs, utility types (Electricity Retail vs Distribution vs Hot Water), addresses, and capabilities.
     """
     meters_data = []
 
-    # 1. Fetch Orkusalan meters
+    # 1. Fetch Orkusalan meters dynamically
     try:
         with get_orkusalan_client() as client:
-            res = client.get("/_next/data/wFrktF2ZvpLkqHzKBMmos/minar-sidur.json")
+            # Dynamically resolve buildId from HTML instead of hardcoded hash
+            build_id = "wFrktF2ZvpLkqHzKBMmos"
+            r_page = client.get("/minar-sidur")
+            if r_page.status_code == 200:
+                m_build = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', r_page.text)
+                if m_build:
+                    try:
+                        next_data = json.loads(m_build.group(1))
+                        build_id = next_data.get("buildId", build_id)
+                    except Exception:
+                        pass
+
+            res = client.get(f"/_next/data/{build_id}/minar-sidur.json")
             if res.status_code == 200:
                 data = res.json()
                 connections = data.get("pageProps", {}).get("user", {}).get("connections", [])
                 for conn in connections:
                     is_amr = conn.get("configType") == "AMR mælir"
-                    meters_data.append({
+                    m_obj = {
                         "provider": "Orkusalan",
-                        "utility": "electricity",
+                        "utility": "electricity_retail",
+                        "role": "Raforkusali (Orkusala)",
                         "connection_id": conn.get("id"),
                         "meter_number": conn.get("meterNumber"),
                         "name": conn.get("name", "").strip(),
@@ -141,50 +172,78 @@ def get_meters() -> List[Dict[str, Any]]:
                         "ean_id": conn.get("EanId"),
                         "meter_type": conn.get("configType"),
                         "supports_hourly": is_amr,
+                        "unit": "kWh",
                         "latest_reading_date": conn.get("latestReadingDate"),
                         "latest_reading_index": conn.get("latestReadingIndex"),
                         "daily_average_kwh": conn.get("dailyAverageConsumption"),
                         "estimated_annual_kwh": conn.get("estimatedYearlyConsumption"),
                         "estimated_annual_cost_isk": conn.get("estimatedAnnualValue"),
                         "active": conn.get("active", True)
-                    })
+                    }
+                    meters_data.append(m_obj)
+                    save_meter(m_obj)
     except Exception:
         pass
 
     if not meters_data:
-        # Fallback to known Orkusalan meters if dynamic route failed
-        meters_data.extend([
+        # Fallback to known Orkusalan meters
+        fallback_ork = [
             {
                 "provider": "Orkusalan",
-                "utility": "electricity",
+                "utility": "electricity_retail",
+                "role": "Raforkusali (Orkusala)",
                 "connection_id": "CON-2207334",
                 "meter_number": "200-6092777587",
-                "name": "Aðalheimili (AMR mælir)",
+                "name": "Heimilið - Raforkusala (Orkusalan)",
                 "config_name": "Config_10619453",
                 "ean_id": "10619453",
                 "meter_type": "AMR mælir",
                 "supports_hourly": True,
-                "note": "Primary residence smart meter with full hourly telemetry"
+                "unit": "kWh",
+                "note": "Primary residence smart meter retail electricity"
             },
             {
                 "provider": "Orkusalan",
-                "utility": "electricity",
+                "utility": "electricity_retail",
+                "role": "Raforkusali (Orkusala)",
                 "connection_id": "CON-2068111",
                 "meter_number": "101-36815202",
-                "name": "Sumarbústaður (MMR mælir)",
+                "name": "Sumarbústaður - Raforkusala (Orkusalan)",
                 "config_name": "Config_10379380",
                 "ean_id": "10379380",
                 "meter_type": "MMR mælir",
                 "supports_hourly": False,
-                "note": "Summer cottage manual meter (supports daily/monthly averages)"
+                "unit": "kWh",
+                "note": "Summer cottage manual meter retail electricity"
             }
-        ])
+        ]
+        meters_data.extend(fallback_ork)
+        for m in fallback_ork:
+            save_meter(m)
 
-    # 2. Add Veitur meters (Heimilið distribution & hot water)
-    meters_data.extend([
+    # 2. Add RARIK distribution meter for Summer cottage
+    rarik_m = {
+        "provider": "RARIK",
+        "utility": "electricity_distribution",
+        "role": "Dreifiveita (Flutningur raforku)",
+        "connection_id": "RARIK-101-36815202",
+        "meter_number": "101-36815202",
+        "name": "Sumarbústaður - Rafmagnsdreifing (RARIK)",
+        "config_name": "MMR mælir 101-36815202",
+        "meter_type": "MMR Manual Meter (Álestrarmælir)",
+        "supports_hourly": False,
+        "unit": "kWh",
+        "note": "Electricity grid distribution operator for Sumarbústaðurinn"
+    }
+    meters_data.append(rarik_m)
+    save_meter(rarik_m)
+
+    # 3. Add Veitur meters (Heimilið distribution & hot water)
+    veitur_meters = [
         {
             "provider": "Veitur",
             "utility": "electricity_distribution",
+            "role": "Dreifiveita (Flutningur raforku)",
             "connection_id": "Veitur-62858",
             "meter_number": "62858",
             "name": "Heimilið - Rafmagnsdreifing (Veitur)",
@@ -197,6 +256,7 @@ def get_meters() -> List[Dict[str, Any]]:
         {
             "provider": "Veitur",
             "utility": "hot_water",
+            "role": "Hitaveita (Heitt vatn)",
             "connection_id": "Veitur-30968",
             "meter_number": "30968",
             "name": "Heimilið - Hitaveita (Veitur)",
@@ -206,7 +266,10 @@ def get_meters() -> List[Dict[str, Any]]:
             "unit": "m³",
             "note": "Geothermal hot water heating meter for Heimilið"
         }
-    ])
+    ]
+    meters_data.extend(veitur_meters)
+    for m in veitur_meters:
+        save_meter(m)
 
     return meters_data
 
@@ -283,6 +346,7 @@ def get_electricity_usage(
 
     config_name = selected_meter.get("config_name")
     is_amr = selected_meter.get("supports_hourly", False)
+    m_number = selected_meter.get("meter_number")
 
     if time_period == "Hourly" and not is_amr:
         return {
@@ -290,24 +354,50 @@ def get_electricity_usage(
             "meter": selected_meter
         }
 
-    # Fetch consumption from Orkusalan API
+    # Attempt fetch from Orkusalan API
     url = f"/api/user/consumption?configurationName={config_name}&timePeriod={time_period}&unitOfMesure=kWh&startDate={start_date}&endDate={end_date}"
-    with get_orkusalan_client() as client:
-        res = client.get(url)
-        if res.status_code != 200:
-            return {
-                "error": f"Failed to fetch consumption: HTTP {res.status_code}",
-                "details": res.text[:300],
-                "meter": selected_meter
-            }
-        
-        items = res.json()
-        total_kwh = sum(item.get("Value", 0.0) for item in items if isinstance(item.get("Value"), (int, float)))
+    try:
+        with get_orkusalan_client() as client:
+            res = client.get(url)
+            if res.status_code == 200:
+                items = res.json()
+                readings = [
+                    {
+                        "timestamp": item.get("StartDate"),
+                        "kwh": round(item.get("Value", 0.0), 3)
+                    }
+                    for item in items
+                ]
+                total_kwh = sum(r["kwh"] for r in readings)
+                
+                # Persist to local SQLite database
+                save_readings(meter_id=m_number, readings=readings, resolution=resolution, unit="kWh")
 
+                return {
+                    "meter": {
+                        "name": selected_meter.get("name"),
+                        "meter_number": m_number,
+                        "connection_id": selected_meter.get("connection_id"),
+                        "meter_type": selected_meter.get("meter_type")
+                    },
+                    "resolution": resolution,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "total_kwh": round(total_kwh, 3),
+                    "readings_count": len(readings),
+                    "readings": readings
+                }
+    except Exception:
+        pass
+
+    # Fallback to local SQLite database if offline or token expired
+    db_readings = get_readings(meter_id=m_number, resolution=resolution, start_date=start_date, end_date=end_date)
+    if db_readings:
+        total_kwh = sum(r["value"] for r in db_readings)
         return {
             "meter": {
                 "name": selected_meter.get("name"),
-                "meter_number": selected_meter.get("meter_number"),
+                "meter_number": m_number,
                 "connection_id": selected_meter.get("connection_id"),
                 "meter_type": selected_meter.get("meter_type")
             },
@@ -315,15 +405,15 @@ def get_electricity_usage(
             "start_date": start_date,
             "end_date": end_date,
             "total_kwh": round(total_kwh, 3),
-            "readings_count": len(items),
-            "readings": [
-                {
-                    "timestamp": item.get("StartDate"),
-                    "kwh": round(item.get("Value", 0.0), 3)
-                }
-                for item in items
-            ]
+            "readings_count": len(db_readings),
+            "readings": db_readings,
+            "from_database": True
         }
+
+    return {
+        "error": f"Failed to fetch consumption and no cached readings found in database for meter {m_number}.",
+        "meter": selected_meter
+    }
 
 @mcp.tool()
 def get_water_usage(
@@ -356,7 +446,8 @@ def get_water_usage(
         "date": date,
         "total_cubic_meters": data.get("total_usage", 0.0),
         "readings_count": data.get("readings_count", 0),
-        "readings": data.get("readings", [])
+        "readings": data.get("readings", []),
+        "from_database": data.get("from_database", False)
     }
 
 @mcp.tool()
@@ -371,25 +462,33 @@ def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
     """
     all_invoices = []
     errors = []
+    future_to = (datetime.now() + timedelta(days=365)).strftime("%Y-%m-%d")
 
     # 1. Fetch from Orkusalan
     if provider in ["all", "orkusalan"]:
         try:
             with get_orkusalan_client() as client:
-                res = client.get(f"/api/user/invoices?from=2024-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&page=1&pageSize={limit}")
+                res = client.get(f"/api/user/invoices?from=2024-01-01T00:00:00.000Z&to={future_to}T23:59:59.000Z&page=1&pageSize={limit}")
                 if res.status_code == 200:
                     for inv in res.json():
+                        due_clean = _normalize_date(inv.get("dueDate"))
+                        issued_clean = _normalize_date(inv.get("issuedDate"))
+                        iid = str(inv.get("invoiceId"))
+                        loc = "Bústaður (Orkusalan orka)" if "10379380" in iid or "Or" in iid else "Heimili (Orkusalan orka)"
                         all_invoices.append({
                             "provider": "Orkusalan",
-                            "invoice_id": inv.get("invoiceId"),
+                            "invoice_id": f"Orkusalan-{iid}",
                             "claim_number": inv.get("claimNumber"),
-                            "issued_date": inv.get("issuedDate", "").split("T")[0],
-                            "due_date": inv.get("dueDate", "").split("T")[0],
-                            "paid_date": inv.get("fullyPaidDate", "").split("T")[0] if inv.get("fullyPaidDate") else None,
+                            "location": loc,
+                            "period": due_clean[:7] if due_clean else "",
+                            "issued_date": issued_clean,
+                            "due_date": due_clean,
+                            "paid_date": _normalize_date(inv.get("fullyPaidDate")) if inv.get("fullyPaidDate") else None,
+                            "amount_isk": inv.get("amountInclVAT") or 0.0,
                             "amount_incl_vat_isk": inv.get("amountInclVAT"),
                             "amount_excl_vat_isk": inv.get("amountExclVAT"),
                             "paid": inv.get("paid", False),
-                            "invoice_url": inv.get("pathToInvoice")
+                            "pdf_url": inv.get("pathToInvoice")
                         })
                 else:
                     errors.append(f"Orkusalan invoices returned HTTP {res.status_code}")
@@ -435,16 +534,21 @@ def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
                     for r in parser.rows[1:]:
                         if len(r) >= 6 and r[0].startswith("Or"):
                             inv_nr = r[0]
-                            if not any(i.get("invoice_id") == inv_nr for i in all_invoices):
+                            if not any(i.get("invoice_id") == f"RARIK-{inv_nr}" for i in all_invoices):
+                                issued_clean = _normalize_date(r[1])
+                                due_clean = _normalize_date(r[2])
+                                amt_num = float(r[3].replace(".", "").replace(",", ".")) if isinstance(r[3], str) else float(r[3])
                                 all_invoices.append({
                                     "provider": "RARIK",
-                                    "invoice_id": inv_nr,
+                                    "invoice_id": f"RARIK-{inv_nr}",
                                     "claim_number": None,
-                                    "issued_date": r[1],
-                                    "due_date": r[2],
-                                    "amount_isk": r[3],
+                                    "location": "Bústaður (RARIK flutningur)",
+                                    "period": due_clean[:7] if due_clean else "",
+                                    "issued_date": issued_clean,
+                                    "due_date": due_clean,
+                                    "amount_isk": amt_num,
                                     "remaining_balance": r[5],
-                                    "settled_date": r[6] if len(r) > 6 else "",
+                                    "settled_date": _normalize_date(r[6]) if len(r) > 6 else "",
                                     "paid": True if (len(r) > 6 and r[6]) else False,
                                     "pdf_url": f"https://minarsidur.rarik.is/yfirlit/$Invoice/GetInvoicePDF/?invoiceNr={inv_nr}&nationalId={national_id}"
                                 })
@@ -461,7 +565,14 @@ def get_invoices(limit: int = 10, provider: str = "all") -> Dict[str, Any]:
         except Exception as e:
             errors.append(f"Veitur invoices error: {e}")
 
-    # Sort descending by due_date
+    # Persist all live fetched invoices to local SQLite database
+    if all_invoices:
+        save_invoices(all_invoices)
+    else:
+        # Fallback to local SQLite database
+        all_invoices = get_invoices_from_db(limit=limit, provider=provider)
+
+    # Sort descending by normalized due_date (YYYY-MM-DD)
     all_invoices.sort(key=lambda x: str(x.get("due_date", "")), reverse=True)
 
     return {

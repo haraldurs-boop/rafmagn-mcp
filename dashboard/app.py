@@ -91,7 +91,7 @@ routes = [
     Route("/api/dashboard-data", api_dashboard_data),
 ]
 
-app = Starlette(debug=True, routes=routes, lifespan=lifespan)
+app = Starlette(debug=False, routes=routes, lifespan=lifespan)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))

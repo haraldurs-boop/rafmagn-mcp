@@ -9,6 +9,8 @@
   - Fully verified reverse-engineered REST/RSC endpoints documented with sample schemas: **DONE**
   - Headed Playwright and CLI authentication helper (`auth_helper.py`) facilitating manual Icelandic Electronic ID (Rafræn skilríki) login for RARIK, Orkusalan, and Veitur: **DONE**
   - FastMCP server (`server.py`) exposing tools (`get_electricity_usage`, `get_water_usage`, `get_meters`, `get_invoices`, `check_auth_status`): **DONE**
+  - Local SQLite telemetry database (`database.py` / `telemetry.db`) in WAL mode persisting all meter metadata, historical consumption (hourly/daily/monthly), and claims independently of cookie timeouts: **DONE**
+  - Data modeling accuracy fixes (removed fabricated cottage daily spikes; flagged MMR meters as monthly-averaged uniform distribution; strictly differentiated retail electricity [Orkusalan] vs distribution [Veitur / RARIK] vs geothermal hot water [Veitur]): **DONE**
   - Web Dashboard UI comparing Heimilið and Sumarbústaðurinn with hot water telemetry and invoices: **DONE**
   - Deployed to home server `r8q` (`192.168.68.87`) with systemd persistent services: **DONE**
 
@@ -64,8 +66,8 @@
 rafmagn-mcp/
 ├── dashboard/
 │   ├── app.py                  (Web server listening on 0.0.0.0:8050)
-│   ├── data_service.py         (Metrics & YoY aggregation with Veitur data)
-│   └── index.html              (Scandinavian minimalist UI)
+│   ├── data_service.py         (Metrics & YoY aggregation with Veitur data & MMR indicators)
+│   └── index.html              (Scandinavian minimalist UI with provider role badges)
 ├── docs/
 │   ├── rarik_api_spec.md
 │   ├── orkusalan_api_spec.md
@@ -73,9 +75,10 @@ rafmagn-mcp/
 │   └── sumarbus_notkunarsaga.md
 ├── .env.example
 ├── auth_helper.py              (Multi-provider auth CLI & headed Playwright)
-├── veitur_client.py            (Veitur RSC telemetry & claim parser)
+├── database.py                 (SQLite telemetry & invoice persistence in WAL mode)
+├── veitur_client.py            (Veitur RSC telemetry & claim parser with SQLite storage)
 ├── inspect_veitur.py           (Veitur discovery tool)
-├── server.py                   (FastMCP supporting stdio and SSE on port 8051)
+├── server.py                   (FastMCP supporting stdio and SSE on port 8051 with DB fallback)
 ├── test_server.py              (Integration test suite)
 ├── README.md
 └── PROJECT_STATE.md

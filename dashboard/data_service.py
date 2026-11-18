@@ -11,6 +11,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from veitur_client import check_veitur_auth, get_veitur_consumption, get_veitur_invoices
+from database import save_readings, save_invoices, get_invoices_from_db, get_readings
 
 AUTH_FILE = os.path.join(BASE_DIR, ".auth_session.json")
 
@@ -101,12 +102,12 @@ def get_dashboard_data() -> Dict[str, Any]:
             15.5, 16.1, 17.9, 19.8, 21.2, 14.5, 13.9, 15.4, 16.2, 17.5, 16.3
         ]
 
-    # Daily distribution for Sumarbústaðurinn totaling 251.0 kWh
-    cottage_daily_values = [
-        6.2, 5.8, 14.5, 18.2, 7.1, 5.4, 5.1, 5.5, 6.0, 15.8,
-        17.2, 6.5, 5.2, 5.0, 5.8, 16.1, 19.4, 6.8, 5.3, 5.1,
-        5.4, 6.2, 17.5, 18.0, 7.2, 5.0, 4.9, 5.2, 5.6, 16.4, 15.9
-    ]
+    # 4. Daily averages and series
+    home_avg_daily = round(home_oct_2026 / 31.0, 1)
+    cottage_avg_daily = round(cottage_oct_2026 / 31.0, 1)
+
+    # For MMR cottage meter, daily distribution is an interpolated uniform average
+    cottage_daily_values = [cottage_avg_daily] * 31
 
     # 4. Invoices (Orkusalan + Veitur)
     invoices = []
@@ -118,7 +119,7 @@ def get_dashboard_data() -> Dict[str, Any]:
             if r_inv.status_code == 200:
                 for inv in r_inv.json():
                     iid = str(inv.get("invoiceId", ""))
-                    loc = "Bústaður" if "10379380" in iid or "Or" in iid else "Heimili"
+                    loc = "Bústaður (Orkusalan orka)" if "10379380" in iid or "Or" in iid else "Heimili (Orkusalan orka)"
                     issued = inv.get("issuedDate", "")[:10]
                     due = inv.get("dueDate", "")[:10]
                     period_str = issued[:7] if issued else "2026-10"
@@ -149,7 +150,7 @@ def get_dashboard_data() -> Dict[str, Any]:
                 invoices.append({
                     "id": f"Veitur-{v.get('claim_number')}",
                     "claim": v.get("referral_claim", ""),
-                    "location": "Heimili (Veitur)",
+                    "location": "Heimili (Veitur flutningur/vatn)",
                     "provider": "Veitur",
                     "period": v.get("due_date", "")[:7],
                     "amount_isk": f"{amt:,.0f}".replace(",", "."),
@@ -165,10 +166,10 @@ def get_dashboard_data() -> Dict[str, Any]:
     # Fallback invoices if Orkusalan offline
     if not invoices:
         invoices = [
-            {"id": "Veitur-8481823", "claim": "GST-303774-7", "location": "Heimili (Veitur)", "provider": "Veitur", "period": "2026-11", "amount_isk": "23.287", "amount_num": 23287, "issued_date": "2026-11-20", "due_date": "2026-11-20", "paid": True, "url": "https://minarsidur.veitur.is/reikningar/krofur"},
-            {"id": "Veitur-8376526", "claim": "GST-303774-6", "location": "Heimili (Veitur)", "provider": "Veitur", "period": "2026-10", "amount_isk": "19.329", "amount_num": 19329, "issued_date": "2026-10-20", "due_date": "2026-10-20", "paid": True, "url": "https://minarsidur.veitur.is/reikningar/krofur"},
-            {"id": "Orkusalan-10619453-10", "claim": "7649201", "location": "Heimili", "provider": "Orkusalan", "period": "2026-10", "amount_isk": "5.046", "amount_num": 5046, "issued_date": "2026-11-01", "due_date": "2026-11-15", "paid": True, "url": "#"},
-            {"id": "Orkusalan-10379380-10", "claim": "7649202", "location": "Bústaður", "provider": "Orkusalan", "period": "2026-10", "amount_isk": "4.652", "amount_num": 4652, "issued_date": "2026-11-01", "due_date": "2026-11-15", "paid": True, "url": "#"}
+            {"id": "Veitur-8481823", "claim": "GST-303774-7", "location": "Heimili (Veitur flutningur/vatn)", "provider": "Veitur", "period": "2026-11", "amount_isk": "23.287", "amount_num": 23287, "issued_date": "2026-11-20", "due_date": "2026-11-20", "paid": True, "url": "https://minarsidur.veitur.is/reikningar/krofur"},
+            {"id": "Veitur-8376526", "claim": "GST-303774-6", "location": "Heimili (Veitur flutningur/vatn)", "provider": "Veitur", "period": "2026-10", "amount_isk": "19.329", "amount_num": 19329, "issued_date": "2026-10-20", "due_date": "2026-10-20", "paid": True, "url": "https://minarsidur.veitur.is/reikningar/krofur"},
+            {"id": "Orkusalan-10619453-10", "claim": "7649201", "location": "Heimili (Orkusalan orka)", "provider": "Orkusalan", "period": "2026-10", "amount_isk": "5.046", "amount_num": 5046, "issued_date": "2026-11-01", "due_date": "2026-11-15", "paid": True, "url": "#"},
+            {"id": "Orkusalan-10379380-10", "claim": "7649202", "location": "Bústaður (Orkusalan orka)", "provider": "Orkusalan", "period": "2026-10", "amount_isk": "4.652", "amount_num": 4652, "issued_date": "2026-11-01", "due_date": "2026-11-15", "paid": True, "url": "#"}
         ]
 
     # Sort descending by due date
@@ -224,7 +225,9 @@ def get_dashboard_data() -> Dict[str, Any]:
             "home_series": home_daily_values,
             "cottage_series": cottage_daily_values,
             "home_avg": home_avg_daily,
-            "cottage_avg": cottage_avg_daily
+            "cottage_avg": cottage_avg_daily,
+            "cottage_is_estimated": True,
+            "cottage_note": "MMR mælir: Jafndreift mánaðarmeðaltal"
         },
         "invoices": invoices[:8],
         "insight": "Notkun í sumarbústaðnum dróst saman um 14,3% miðað við sama mánuð í fyrra og er um 23% undir meðaltali fyrri ára. Hitaveita á heimilinu var 52,7 m³ í október (Veitur)."

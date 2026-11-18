@@ -8,6 +8,8 @@ ENV/
 .env
 *.pem
 *.key
+*.db
+*.sqlite3
 
 # Captured network traffic & discovery dumps
 docs/captured_*.json
