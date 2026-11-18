@@ -172,13 +172,19 @@ def get_veitur_consumption(
                     for r in clean_readings:
                         r["is_estimated"] = is_uniform_daily
 
-                    save_readings(
-                        meter_id=meter_id,
-                        readings=clean_readings,
-                        resolution=resolution,
-                        unit=unit,
-                        is_estimated=is_uniform_daily
+                    rows_to_save = (
+                        [r for r in clean_readings if str(r.get("timestamp") or "")[8:10] == "01"]
+                        if resolution == "monthly"
+                        else clean_readings
                     )
+                    if rows_to_save:
+                        save_readings(
+                            meter_id=meter_id,
+                            readings=rows_to_save,
+                            resolution=resolution,
+                            unit=unit,
+                            is_estimated=is_uniform_daily
+                        )
 
                     return {
                         "utility": utility,
@@ -312,26 +318,28 @@ def get_veitur_invoices(limit: int = 10) -> List[Dict[str, Any]]:
 
 def sync_veitur_history() -> Dict[str, Any]:
     now = datetime.now()
-    today = now.strftime("%Y-%m-%d")
+    cur_year = str(now.year)
     prev_year = str(now.year - 1)
     cur_month = now.strftime("%Y-%m-01")
     prev_month = (now.replace(day=1) - timedelta(days=1)).replace(day=1).strftime("%Y-%m-%d")
 
-    hw_12m = get_veitur_consumption("heitt-vatn", "30968", "last12Months", today)
+    hw_cur_y = get_veitur_consumption("heitt-vatn", "30968", "year", f"{cur_year}-01-01")
     hw_prev_y = get_veitur_consumption("heitt-vatn", "30968", "year", f"{prev_year}-01-01")
     hw_prev_m = get_veitur_consumption("heitt-vatn", "30968", "month", prev_month)
     hw_cur_m = get_veitur_consumption("heitt-vatn", "30968", "month", cur_month)
-    el_12m = get_veitur_consumption("rafmagn", "62858", "last12Months", today)
+    el_cur_y = get_veitur_consumption("rafmagn", "62858", "year", f"{cur_year}-01-01")
+    el_prev_y = get_veitur_consumption("rafmagn", "62858", "year", f"{prev_year}-01-01")
     el_prev_m = get_veitur_consumption("rafmagn", "62858", "month", prev_month)
     invs = get_veitur_invoices(limit=12)
 
     return {
         "synced_at": now.isoformat(),
-        "hot_water_12m": {"count": hw_12m.get("readings_count", 0), "from_database": hw_12m.get("from_database", False)},
+        "hot_water_cur_year": {"count": hw_cur_y.get("readings_count", 0), "from_database": hw_cur_y.get("from_database", False)},
         "hot_water_prev_year": {"count": hw_prev_y.get("readings_count", 0), "from_database": hw_prev_y.get("from_database", False)},
         "hot_water_prev_month": {"count": hw_prev_m.get("readings_count", 0), "from_database": hw_prev_m.get("from_database", False)},
         "hot_water_cur_month": {"count": hw_cur_m.get("readings_count", 0), "from_database": hw_cur_m.get("from_database", False)},
-        "electricity_12m": {"count": el_12m.get("readings_count", 0), "from_database": el_12m.get("from_database", False)},
+        "electricity_cur_year": {"count": el_cur_y.get("readings_count", 0), "from_database": el_cur_y.get("from_database", False)},
+        "electricity_prev_year": {"count": el_prev_y.get("readings_count", 0), "from_database": el_prev_y.get("from_database", False)},
         "electricity_prev_month": {"count": el_prev_m.get("readings_count", 0), "from_database": el_prev_m.get("from_database", False)},
         "invoices_count": len(invs)
     }

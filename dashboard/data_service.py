@@ -350,22 +350,33 @@ def get_dashboard_data() -> Dict[str, Any]:
         # Sort descending by due date
         invoices.sort(key=lambda x: str(x.get("due_date", "")), reverse=True)
 
-        # 6. Hot Water Summary & 12-Month Series (Veitur Meter 30968 / 4081726607)
+        # 6. Hot Water Summary & 12 Completed Calendar Months (Veitur Meter 30968 / 4081726607)
         now = datetime.now()
-        today_str = now.strftime("%Y-%m-%d")
+        current_ym = now.strftime("%Y-%m")
         hw_oct = get_veitur_consumption("heitt-vatn", "30968", "month", "2026-10-01")
-        hw_12m = get_veitur_consumption("heitt-vatn", "30968", "last12Months", today_str)
-        hw_prev_year = get_veitur_consumption("heitt-vatn", "30968", "year", "2025-01-01")
+        hw_prev_year = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year - 1}-01-01")
+        hw_cur_year = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year}-01-01")
 
         home_hot_water_m3 = round(float(hw_oct["total_usage"]), 1) if hw_oct.get("total_usage", 0) > 0 else 52.7
         hw_daily_avg_m3 = round(home_hot_water_m3 / 31.0, 2)
         hw_is_daily_uniform = bool(hw_oct.get("is_estimated", True))
 
-        monthly_readings = hw_12m.get("readings", [])
-        if len(monthly_readings) >= 2:
+        monthly_by_ym: Dict[str, Dict[str, Any]] = {}
+        for r in hw_prev_year.get("readings", []) + hw_cur_year.get("readings", []):
+            ts = str(r.get("timestamp") or "")
+            if len(ts) < 10 or ts[8:10] != "01":
+                continue
+            ym = ts[:7]
+            val = float(r.get("value") or 0.0)
+            if ym >= current_ym and val <= 0:
+                continue
+            monthly_by_ym[ym] = {"timestamp": ts, "value": val}
+
+        completed_months = [monthly_by_ym[k] for k in sorted(monthly_by_ym.keys())][-12:]
+        if len(completed_months) >= 2:
             hw_has_12m_history = True
-            hw_monthly_labels = [format_is_month(r.get("timestamp", "")) for r in monthly_readings]
-            hw_monthly_values = [round(float(r.get("value") or 0.0), 2) for r in monthly_readings]
+            hw_monthly_labels = [format_is_month(r["timestamp"]) for r in completed_months]
+            hw_monthly_values = [round(r["value"], 2) for r in completed_months]
             hw_annual_total_m3 = round(sum(hw_monthly_values), 1)
             hw_monthly_avg_m3 = round(hw_annual_total_m3 / len(hw_monthly_values), 1)
             nonzero_pairs = [(lbl, val) for lbl, val in zip(hw_monthly_labels, hw_monthly_values) if val > 0]
