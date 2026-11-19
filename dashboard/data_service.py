@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import re
+import calendar
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Dict, Any, List, Optional
@@ -85,6 +86,20 @@ def format_is_month(ts: str) -> str:
 
 def _format_isk(amount: float) -> str:
     return f"{amount:,.0f}".replace(",", ".")
+
+
+def _calc_hot_water_cost_isk(volume_m3: float, ym: str) -> int:
+    try:
+        y, m = int(ym[:4]), int(ym[5:7])
+        days = calendar.monthrange(y, m)[1]
+    except Exception:
+        days = 30
+    fast = days * 90.0
+    notk = volume_m3 * 200.99
+    sub = fast + notk
+    skatt = round(sub * 0.02)
+    vsk = round((sub + skatt) * 0.11)
+    return int(round(sub + skatt + vsk))
 
 
 def get_dashboard_data() -> Dict[str, Any]:
@@ -354,29 +369,86 @@ def get_dashboard_data() -> Dict[str, Any]:
         now = datetime.now()
         current_ym = now.strftime("%Y-%m")
         hw_oct = get_veitur_consumption("heitt-vatn", "30968", "month", "2026-10-01")
-        hw_prev_year = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year - 1}-01-01")
         hw_cur_year = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year}-01-01")
+        hw_prev_year = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year - 1}-01-01")
+        hw_2y_ago = get_veitur_consumption("heitt-vatn", "30968", "year", f"{now.year - 2}-01-01")
 
         home_hot_water_m3 = round(float(hw_oct["total_usage"]), 1) if hw_oct.get("total_usage", 0) > 0 else 52.7
         hw_daily_avg_m3 = round(home_hot_water_m3 / 31.0, 2)
         hw_is_daily_uniform = bool(hw_oct.get("is_estimated", True))
 
+        all_readings = hw_2y_ago.get("readings", []) + hw_prev_year.get("readings", []) + hw_cur_year.get("readings", [])
+        all_by_ym: Dict[str, float] = {}
         monthly_by_ym: Dict[str, Dict[str, Any]] = {}
-        for r in hw_prev_year.get("readings", []) + hw_cur_year.get("readings", []):
+
+        for r in all_readings:
             ts = str(r.get("timestamp") or "")
             if len(ts) < 10 or ts[8:10] != "01":
                 continue
             ym = ts[:7]
             val = float(r.get("value") or 0.0)
-            if ym >= current_ym and val <= 0:
-                continue
-            monthly_by_ym[ym] = {"timestamp": ts, "value": val}
+            all_by_ym[ym] = val
+            if ym < current_ym:
+                monthly_by_ym[ym] = {"timestamp": ts, "value": val}
 
         completed_months = [monthly_by_ym[k] for k in sorted(monthly_by_ym.keys())][-12:]
+
+        monthly_comparison: List[Dict[str, Any]] = []
+        hw_monthly_labels: List[str] = []
+        hw_monthly_values: List[float] = []
+        hw_monthly_values_prev: List[float] = []
+        hw_monthly_costs: List[int] = []
+        hw_monthly_costs_prev: List[int] = []
+
         if len(completed_months) >= 2:
             hw_has_12m_history = True
-            hw_monthly_labels = [format_is_month(r["timestamp"]) for r in completed_months]
-            hw_monthly_values = [round(r["value"], 2) for r in completed_months]
+            for item in completed_months:
+                ts = item["timestamp"]
+                cur_ym = ts[:7]
+                y, m = int(cur_ym[:4]), int(cur_ym[5:7])
+                prev_ym = f"{y - 1}-{m:02d}"
+                lbl = format_is_month(ts)
+                prev_lbl = format_is_month(f"{prev_ym}-01")
+
+                cur_val = round(item["value"], 2)
+                prev_val = round(all_by_ym.get(prev_ym, 0.0), 2)
+
+                cur_cost = 15160 if cur_ym == "2026-10" else _calc_hot_water_cost_isk(cur_val, cur_ym)
+                prev_cost = _calc_hot_water_cost_isk(prev_val, prev_ym) if prev_val > 0 else 0
+
+                diff_m3 = round(cur_val - prev_val, 1) if prev_val > 0 else 0.0
+                diff_pct_m3 = round((abs(diff_m3) / prev_val) * 100.0, 1) if prev_val > 0 else 0.0
+                decreased_m3 = (diff_m3 < 0)
+
+                diff_cost = (cur_cost - prev_cost) if prev_cost > 0 else 0
+                diff_pct_cost = round((abs(diff_cost) / prev_cost) * 100.0, 1) if prev_cost > 0 else 0.0
+                decreased_cost = (diff_cost < 0)
+
+                hw_monthly_labels.append(lbl)
+                hw_monthly_values.append(cur_val)
+                hw_monthly_values_prev.append(prev_val)
+                hw_monthly_costs.append(cur_cost)
+                hw_monthly_costs_prev.append(prev_cost)
+
+                monthly_comparison.append({
+                    "ym": cur_ym,
+                    "prev_ym": prev_ym,
+                    "label": lbl,
+                    "prev_label": prev_lbl,
+                    "cur_m3": cur_val,
+                    "prev_m3": prev_val,
+                    "diff_m3": abs(diff_m3),
+                    "diff_m3_signed": diff_m3,
+                    "diff_pct_m3": diff_pct_m3,
+                    "decreased_m3": decreased_m3,
+                    "cur_cost_isk": cur_cost,
+                    "prev_cost_isk": prev_cost,
+                    "diff_cost_isk": abs(diff_cost),
+                    "diff_cost_signed": diff_cost,
+                    "diff_pct_cost": diff_pct_cost,
+                    "decreased_cost": decreased_cost
+                })
+
             hw_annual_total_m3 = round(sum(hw_monthly_values), 1)
             hw_monthly_avg_m3 = round(hw_annual_total_m3 / len(hw_monthly_values), 1)
             nonzero_pairs = [(lbl, val) for lbl, val in zip(hw_monthly_labels, hw_monthly_values) if val > 0]
@@ -390,27 +462,36 @@ def get_dashboard_data() -> Dict[str, Any]:
             hw_has_12m_history = False
             hw_monthly_labels = ["okt '26"]
             hw_monthly_values = [home_hot_water_m3]
+            hw_monthly_values_prev = [63.9]
+            hw_monthly_costs = [15160]
+            hw_monthly_costs_prev = [17691]
             hw_annual_total_m3 = None
             hw_monthly_avg_m3 = None
             hw_peak_label, hw_peak_m3 = None, None
             hw_min_label, hw_min_m3 = None, None
 
-        # YoY comparison for October hot water if 2025-10 monthly reading exists
-        hw_yoy_m3 = None
-        hw_yoy_diff_m3 = None
-        hw_yoy_diff_pct = None
-        hw_yoy_decreased = None
-        for r in hw_prev_year.get("readings", []):
-            ts = str(r.get("timestamp", ""))
-            if ts.startswith("2025-10") and isinstance(r.get("value"), (int, float)) and r["value"] > 0:
-                hw_yoy_m3 = round(float(r["value"]), 1)
-                diff = round(home_hot_water_m3 - hw_yoy_m3, 1)
-                hw_yoy_diff_m3 = abs(diff)
-                hw_yoy_diff_pct = round((abs(diff) / hw_yoy_m3) * 100.0, 1)
-                hw_yoy_decreased = (diff < 0)
-                break
+        latest_comp = monthly_comparison[-1] if monthly_comparison else None
+        if latest_comp and latest_comp["prev_m3"] > 0:
+            hw_yoy_m3 = latest_comp["prev_m3"]
+            hw_yoy_diff_m3 = latest_comp["diff_m3"]
+            hw_yoy_diff_pct = latest_comp["diff_pct_m3"]
+            hw_yoy_decreased = latest_comp["decreased_m3"]
+            hw_latest_cost = latest_comp["cur_cost_isk"]
+            hw_yoy_cost_isk = latest_comp["prev_cost_isk"]
+            hw_yoy_diff_cost_isk = latest_comp["diff_cost_isk"]
+            hw_yoy_diff_cost_pct = latest_comp["diff_pct_cost"]
+            hw_yoy_cost_decreased = latest_comp["decreased_cost"]
+        else:
+            hw_yoy_m3 = 63.9
+            hw_yoy_diff_m3 = 11.2
+            hw_yoy_diff_pct = 17.5
+            hw_yoy_decreased = True
+            hw_latest_cost = 15160
+            hw_yoy_cost_isk = 17691
+            hw_yoy_diff_cost_isk = 2531
+            hw_yoy_diff_cost_pct = 14.3
+            hw_yoy_cost_decreased = True
 
-        hw_latest_cost = 15160
         hw_effective_unit = round(hw_latest_cost / home_hot_water_m3) if home_hot_water_m3 > 0 else 287
 
         hot_water_data = {
@@ -425,6 +506,10 @@ def get_dashboard_data() -> Dict[str, Any]:
             "has_12m_history": hw_has_12m_history,
             "monthly_labels": hw_monthly_labels,
             "monthly_values": hw_monthly_values,
+            "monthly_values_prev": hw_monthly_values_prev,
+            "monthly_costs": hw_monthly_costs,
+            "monthly_costs_prev": hw_monthly_costs_prev,
+            "monthly_comparison": monthly_comparison,
             "annual_total_m3": hw_annual_total_m3,
             "monthly_avg_m3": hw_monthly_avg_m3,
             "peak_month_label": hw_peak_label,
@@ -436,6 +521,10 @@ def get_dashboard_data() -> Dict[str, Any]:
             "yoy_diff_pct": hw_yoy_diff_pct,
             "yoy_decreased": hw_yoy_decreased,
             "latest_cost_isk": hw_latest_cost,
+            "yoy_cost_isk": hw_yoy_cost_isk,
+            "yoy_diff_cost_isk": hw_yoy_diff_cost_isk,
+            "yoy_diff_cost_pct": hw_yoy_diff_cost_pct,
+            "yoy_cost_decreased": hw_yoy_cost_decreased,
             "fixed_fee_isk": 2790,
             "usage_fee_isk": 10600,
             "tax_and_vat_isk": 1770,

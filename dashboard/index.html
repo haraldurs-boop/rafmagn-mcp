@@ -167,12 +167,20 @@
           <p class="text-xs text-slate-400 mt-1">Notkun í október 2026 · <span id="water-daily-avg">1,70</span> m³/dag</p>
         </div>
 
-        <div class="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+        <div class="mt-6 pt-4 border-t border-slate-100 space-y-2">
           <div class="flex items-center justify-between text-xs" id="water-yoy-row">
-            <span class="text-slate-500" id="water-yoy-label">Álestrar (okt):</span>
-            <span class="font-medium text-slate-700 font-mono text-[11px]" id="water-yoy-value">1.330,10 → 1.382,84 m³</span>
+            <span class="text-slate-500">Mælt magn í fyrra:</span>
+            <span id="water-yoy-pill" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+              ↓ 17,5% (11,2 m³) minna
+            </span>
           </div>
-          <div class="flex items-center justify-between text-xs text-slate-500">
+          <div class="flex items-center justify-between text-xs" id="water-cost-yoy-row">
+            <span class="text-slate-500">Kostnaður í fyrra:</span>
+            <span id="water-cost-yoy-pill" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+              ↓ 14,3% (2.531 kr.) minna
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-500 pt-0.5">
             <span>Kostnaður (okt):</span>
             <span class="font-semibold text-orange-700" id="water-card-cost">15.160 kr. (~288 kr./m³)</span>
           </div>
@@ -223,23 +231,102 @@
       <!-- 12-MONTH HOT WATER CHART (2/3 width) -->
       <div class="lg:col-span-2 bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm flex flex-col justify-between">
         <div>
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
             <div>
-              <h3 class="text-base font-semibold text-slate-900">Heitt vatn — Mánaðarnotkun (síðustu 12 mánuðir)</h3>
-              <p class="text-xs text-slate-500">Árstíðasveifla hitaveitu hjá Veitum · Mælir 4081726607 (fastanr. 30968)</p>
+              <h3 class="text-base font-semibold text-slate-900">Heitt vatn — Mánaðarsamanburður milli ára</h3>
+              <p class="text-xs text-slate-500">Samanburður á magni (m³) og reiknuðum kostnaði (kr.) fyrir alla mánuði · Mælir 4081726607</p>
             </div>
-            <span id="water-granularity-badge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
-              Mánaðarálestur (jafndreift dagmeðaltal)
-            </span>
+            
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+              <!-- Unit Toggle -->
+              <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium text-slate-600">
+                <button type="button" id="btn-hw-unit-m3" onclick="setHotWaterUnit('m3')" class="px-2.5 py-1 rounded-md bg-white text-orange-700 shadow-sm font-semibold transition">
+                  Magn (m³)
+                </button>
+                <button type="button" id="btn-hw-unit-isk" onclick="setHotWaterUnit('isk')" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">
+                  Kostnaður (kr.)
+                </button>
+              </div>
+
+              <!-- Month Selector Dropdown -->
+              <div class="flex items-center gap-1.5">
+                <label for="hw-month-select" class="text-xs text-slate-500 font-medium">Mánuður:</label>
+                <select id="hw-month-select" onchange="onSelectHotWaterMonth(this.value)" class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer">
+                </select>
+              </div>
+            </div>
           </div>
 
           <div id="water-history-notice" class="hidden mt-3 px-3.5 py-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-800">
             12 mánaða saga birtist sjálfkrafa um leið og Veitur-innskráning hefur verið endurnýjuð og sótt í staðbundna grunninn.
           </div>
+
+          <!-- Selected Month Interactive YoY Inspector Banner -->
+          <div id="hw-inspector-card" class="mt-4 p-4 rounded-xl bg-orange-50/70 border border-orange-100 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2.5 border-b border-orange-200/60">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                <span class="text-xs font-semibold text-slate-900" id="hw-inspector-title">Samanburður: Október 2026 vs. Október 2025</span>
+              </div>
+              <span class="text-[11px] text-slate-500">Smelltu á súlu eða veldu mánuð að ofan</span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
+              <div class="bg-white/90 p-2.5 rounded-lg border border-orange-100 shadow-2xs">
+                <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Magn í ár</span>
+                <span class="text-sm font-bold text-slate-900 block mt-0.5" id="hw-insp-cur-m3">52,7 m³</span>
+                <span class="text-[11px] text-slate-500 block" id="hw-insp-cur-cost">15.160 kr.</span>
+              </div>
+              <div class="bg-white/90 p-2.5 rounded-lg border border-orange-100 shadow-2xs">
+                <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Magn í fyrra</span>
+                <span class="text-sm font-bold text-slate-600 block mt-0.5" id="hw-insp-prev-m3">63,9 m³</span>
+                <span class="text-[11px] text-slate-500 block" id="hw-insp-prev-cost">17.691 kr.</span>
+              </div>
+              <div class="bg-white/90 p-2.5 rounded-lg border border-orange-100 shadow-2xs">
+                <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Breyting rúmmáls</span>
+                <span class="text-sm font-bold block mt-0.5" id="hw-insp-diff-m3">↓ 17,5%</span>
+                <span class="text-[11px] text-slate-600 block" id="hw-insp-diff-m3-abs">11,2 m³ minna</span>
+              </div>
+              <div class="bg-white/90 p-2.5 rounded-lg border border-orange-100 shadow-2xs">
+                <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider block">Breyting kostnaðar</span>
+                <span class="text-sm font-bold block mt-0.5" id="hw-insp-diff-cost">↓ 14,3%</span>
+                <span class="text-[11px] text-slate-600 block" id="hw-insp-diff-cost-abs">2.531 kr. minna</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="h-64 sm:h-72 mt-4 relative">
           <canvas id="hotWaterChart"></canvas>
+        </div>
+
+        <!-- Collapsible Full 12-Month Comparison Table -->
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="flex items-center justify-between">
+            <button type="button" id="btn-toggle-hw-table" onclick="toggleHotWaterTable()" class="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-700 hover:text-orange-800 transition">
+              <span id="hw-table-toggle-icon">▶</span>
+              <span id="hw-table-toggle-text">Sýna alla 12 mánuði í samanburðartöflu</span>
+            </button>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">Gildandi taxti H1A (200,99 kr./m³ + 90 kr./dag)</span>
+          </div>
+
+          <div id="hw-full-table-container" class="hidden mt-3 overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                <tr>
+                  <th class="py-2.5 px-3">Mánuður</th>
+                  <th class="py-2.5 px-3 text-right">Í ár (m³)</th>
+                  <th class="py-2.5 px-3 text-right">Í fyrra (m³)</th>
+                  <th class="py-2.5 px-3 text-right">Munur (m³)</th>
+                  <th class="py-2.5 px-3 text-right">Í ár (kr.)</th>
+                  <th class="py-2.5 px-3 text-right">Í fyrra (kr.)</th>
+                  <th class="py-2.5 px-3 text-right">Munur (kr.)</th>
+                </tr>
+              </thead>
+              <tbody id="hw-full-table-body" class="divide-y divide-slate-100 font-mono text-[11px]">
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -507,25 +594,33 @@
       document.getElementById('water-daily-avg').innerText = formatIsNumber(hw.daily_avg_m3, 2);
       setSourceBadge('water-source-badge', hw.is_live);
 
-      const waterYoyRow = document.getElementById('water-yoy-row');
-      if (hw.yoy_m3 !== null && hw.yoy_m3 !== undefined) {
-        const pillCls = hw.yoy_decreased
-          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          : 'bg-amber-50 text-amber-700 border-amber-200';
-        const arrow = hw.yoy_decreased ? '↓' : '↑';
-        const word = hw.yoy_decreased ? 'minna' : 'meira';
-        waterYoyRow.innerHTML = `
-          <span class="text-slate-500">Sami mánuður í fyrra:</span>
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${pillCls}">
-            ${arrow} ${formatIsNumber(hw.yoy_diff_pct, 1)}% (${formatIsNumber(hw.yoy_diff_m3, 1)} m³) ${word}
-          </span>
-        `;
-      } else {
-        waterYoyRow.innerHTML = `
-          <span class="text-slate-500">Álestrar (okt):</span>
-          <span class="font-medium text-slate-700 font-mono text-[11px]">${hw.latest_reading_range || '1.330,10 → 1.382,84 m³'}</span>
-        `;
+      // Card 2 YoY Pills (both m3 and ISK)
+      const waterYoyPill = document.getElementById('water-yoy-pill');
+      if (waterYoyPill) {
+        if (hw.yoy_m3 !== null && hw.yoy_m3 !== undefined) {
+          const pillCls = hw.yoy_decreased
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200';
+          const arrow = hw.yoy_decreased ? '↓' : '↑';
+          const word = hw.yoy_decreased ? 'minna' : 'meira';
+          waterYoyPill.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${pillCls}`;
+          waterYoyPill.innerText = `${arrow} ${formatIsNumber(hw.yoy_diff_pct, 1)}% (${formatIsNumber(hw.yoy_diff_m3, 1)} m³) ${word}`;
+        }
       }
+
+      const waterCostYoyPill = document.getElementById('water-cost-yoy-pill');
+      if (waterCostYoyPill) {
+        if (hw.yoy_diff_cost_isk !== null && hw.yoy_diff_cost_isk !== undefined) {
+          const pillCls = hw.yoy_cost_decreased
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200';
+          const arrow = hw.yoy_cost_decreased ? '↓' : '↑';
+          const word = hw.yoy_cost_decreased ? 'minna' : 'meira';
+          waterCostYoyPill.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${pillCls}`;
+          waterCostYoyPill.innerText = `${arrow} ${formatIsNumber(hw.yoy_diff_cost_pct, 1)}% (${formatIsNumber(hw.yoy_diff_cost_isk)} kr.) ${word}`;
+        }
+      }
+
       document.getElementById('water-card-cost').innerText =
         `${formatIsNumber(hw.latest_cost_isk || 15160)} kr. (~${formatIsNumber(hw.effective_unit_isk || 288)} kr./m³)`;
 
@@ -592,13 +687,192 @@
       renderInvoices(data.invoices);
     }
 
+    let currentHwUnit = 'm3';
+    let selectedHwMonthIdx = null;
+    let hwGlobalData = null;
+
+    function setHotWaterUnit(unit) {
+      currentHwUnit = unit;
+      const btnM3 = document.getElementById('btn-hw-unit-m3');
+      const btnIsk = document.getElementById('btn-hw-unit-isk');
+      if (unit === 'm3') {
+        if (btnM3) btnM3.className = 'px-2.5 py-1 rounded-md bg-white text-orange-700 shadow-sm font-semibold transition';
+        if (btnIsk) btnIsk.className = 'px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition';
+      } else {
+        if (btnIsk) btnIsk.className = 'px-2.5 py-1 rounded-md bg-white text-orange-700 shadow-sm font-semibold transition';
+        if (btnM3) btnM3.className = 'px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition';
+      }
+      if (hwGlobalData) renderHotWaterChart(hwGlobalData);
+    }
+
+    function onSelectHotWaterMonth(ym) {
+      if (!hwGlobalData || !hwGlobalData.monthly_comparison) return;
+      const idx = hwGlobalData.monthly_comparison.findIndex(item => item.ym === ym || item.label === ym);
+      if (idx !== -1) {
+        onSelectHotWaterIndex(idx);
+      }
+    }
+
+    function onSelectHotWaterIndex(idx) {
+      selectedHwMonthIdx = idx;
+      updateHotWaterInspector();
+      updateHotWaterTableHighlight();
+      const sel = document.getElementById('hw-month-select');
+      if (sel && sel.options[idx]) sel.selectedIndex = idx;
+    }
+
+    function updateHotWaterInspector() {
+      if (!hwGlobalData || !hwGlobalData.monthly_comparison || hwGlobalData.monthly_comparison.length === 0) return;
+      const comp = hwGlobalData.monthly_comparison;
+      const idx = (selectedHwMonthIdx !== null && selectedHwMonthIdx >= 0 && selectedHwMonthIdx < comp.length)
+        ? selectedHwMonthIdx
+        : comp.length - 1;
+      selectedHwMonthIdx = idx;
+      const item = comp[idx];
+
+      const titleEl = document.getElementById('hw-inspector-title');
+      if (titleEl) titleEl.innerText = `Samanburður: ${item.label} vs. ${item.prev_label}`;
+
+      const curM3El = document.getElementById('hw-insp-cur-m3');
+      const curCostEl = document.getElementById('hw-insp-cur-cost');
+      const prevM3El = document.getElementById('hw-insp-prev-m3');
+      const prevCostEl = document.getElementById('hw-insp-prev-cost');
+
+      if (curM3El) curM3El.innerText = `${formatIsNumber(item.cur_m3, 1)} m³`;
+      if (curCostEl) curCostEl.innerText = `${formatIsNumber(item.cur_cost_isk)} kr.`;
+      if (prevM3El) prevM3El.innerText = item.prev_m3 > 0 ? `${formatIsNumber(item.prev_m3, 1)} m³` : '—';
+      if (prevCostEl) prevCostEl.innerText = item.prev_cost_isk > 0 ? `${formatIsNumber(item.prev_cost_isk)} kr.` : '—';
+
+      const diffM3El = document.getElementById('hw-insp-diff-m3');
+      const diffM3AbsEl = document.getElementById('hw-insp-diff-m3-abs');
+      if (diffM3El && diffM3AbsEl) {
+        if (item.diff_pct_m3 !== null && item.diff_pct_m3 !== undefined && item.prev_m3 > 0) {
+          const arrow = item.decreased_m3 ? '↓' : '↑';
+          const color = item.decreased_m3 ? 'text-emerald-600' : 'text-amber-600';
+          const word = item.decreased_m3 ? 'minna' : 'meira';
+          diffM3El.className = `text-sm font-bold block mt-0.5 ${color}`;
+          diffM3El.innerText = `${arrow} ${formatIsNumber(item.diff_pct_m3, 1)}%`;
+          diffM3AbsEl.innerText = `${formatIsNumber(item.diff_m3, 1)} m³ ${word}`;
+        } else {
+          diffM3El.className = 'text-sm font-bold block mt-0.5 text-slate-400';
+          diffM3El.innerText = '—';
+          diffM3AbsEl.innerText = 'Engin fyrri gögn';
+        }
+      }
+
+      const diffCostEl = document.getElementById('hw-insp-diff-cost');
+      const diffCostAbsEl = document.getElementById('hw-insp-diff-cost-abs');
+      if (diffCostEl && diffCostAbsEl) {
+        if (item.diff_pct_cost !== null && item.diff_pct_cost !== undefined && item.prev_cost_isk > 0) {
+          const arrow = item.decreased_cost ? '↓' : '↑';
+          const color = item.decreased_cost ? 'text-emerald-600' : 'text-amber-600';
+          const word = item.decreased_cost ? 'sparnaður' : 'hækkun';
+          diffCostEl.className = `text-sm font-bold block mt-0.5 ${color}`;
+          diffCostEl.innerText = `${arrow} ${formatIsNumber(item.diff_pct_cost, 1)}%`;
+          diffCostAbsEl.innerText = `${formatIsNumber(item.diff_cost_isk)} kr. ${word}`;
+        } else {
+          diffCostEl.className = 'text-sm font-bold block mt-0.5 text-slate-400';
+          diffCostEl.innerText = '—';
+          diffCostAbsEl.innerText = 'Engin fyrri gögn';
+        }
+      }
+    }
+
+    function toggleHotWaterTable() {
+      const container = document.getElementById('hw-full-table-container');
+      const icon = document.getElementById('hw-table-toggle-icon');
+      const text = document.getElementById('hw-table-toggle-text');
+      if (!container) return;
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        if (icon) icon.innerText = '▼';
+        if (text) text.innerText = 'Fela 12 mánaða samanburðartöflu';
+      } else {
+        container.classList.add('hidden');
+        if (icon) icon.innerText = '▶';
+        if (text) text.innerText = 'Sýna alla 12 mánuði í samanburðartöflu';
+      }
+    }
+
+    function updateHotWaterTableHighlight() {
+      const rows = document.querySelectorAll('#hw-full-table-body tr');
+      rows.forEach((row, idx) => {
+        if (idx === selectedHwMonthIdx) {
+          row.className = 'bg-orange-50 font-semibold cursor-pointer';
+        } else {
+          row.className = 'hover:bg-slate-50 cursor-pointer';
+        }
+      });
+    }
+
+    function populateHotWaterMonthSelect(comp) {
+      const sel = document.getElementById('hw-month-select');
+      if (!sel || !comp) return;
+      sel.innerHTML = '';
+      comp.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = item.ym;
+        opt.innerText = (idx === comp.length - 1) ? `${item.label} (nýjast)` : item.label;
+        sel.appendChild(opt);
+      });
+      if (selectedHwMonthIdx !== null && sel.options[selectedHwMonthIdx]) {
+        sel.selectedIndex = selectedHwMonthIdx;
+      } else {
+        sel.selectedIndex = comp.length - 1;
+        selectedHwMonthIdx = comp.length - 1;
+      }
+    }
+
+    function populateHotWaterTable(comp) {
+      const tbody = document.getElementById('hw-full-table-body');
+      if (!tbody || !comp) return;
+      tbody.innerHTML = '';
+      comp.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = (idx === selectedHwMonthIdx) ? 'bg-orange-50 font-semibold cursor-pointer' : 'hover:bg-slate-50 cursor-pointer';
+        tr.onclick = () => onSelectHotWaterIndex(idx);
+
+        const m3DiffBadge = (item.prev_m3 > 0)
+          ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${item.decreased_m3 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}">
+              ${item.decreased_m3 ? '↓' : '↑'} ${formatIsNumber(item.diff_pct_m3, 1)}% (${item.decreased_m3 ? '-' : '+'}${formatIsNumber(item.diff_m3, 1)})
+            </span>`
+          : '<span class="text-slate-400">—</span>';
+
+        const costDiffBadge = (item.prev_cost_isk > 0)
+          ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${item.decreased_cost ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}">
+              ${item.decreased_cost ? '↓' : '↑'} ${formatIsNumber(item.diff_pct_cost, 1)}% (${item.decreased_cost ? '-' : '+'}${formatIsNumber(item.diff_cost_isk)} kr.)
+            </span>`
+          : '<span class="text-slate-400">—</span>';
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-medium text-slate-800">${item.label}</td>
+          <td class="py-2.5 px-3 text-right text-slate-900">${formatIsNumber(item.cur_m3, 1)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-500">${item.prev_m3 > 0 ? formatIsNumber(item.prev_m3, 1) : '—'}</td>
+          <td class="py-2.5 px-3 text-right">${m3DiffBadge}</td>
+          <td class="py-2.5 px-3 text-right text-slate-900">${formatIsNumber(item.cur_cost_isk)} kr.</td>
+          <td class="py-2.5 px-3 text-right text-slate-500">${item.prev_cost_isk > 0 ? formatIsNumber(item.prev_cost_isk) + ' kr.' : '—'}</td>
+          <td class="py-2.5 px-3 text-right">${costDiffBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderHotWaterChart(hw) {
+      hwGlobalData = hw;
+      const comp = hw.monthly_comparison || [];
+      if (comp.length > 0) {
+        populateHotWaterMonthSelect(comp);
+        populateHotWaterTable(comp);
+        updateHotWaterInspector();
+      }
+
       const ctx = document.getElementById('hotWaterChart').getContext('2d');
       if (waterChartInstance) waterChartInstance.destroy();
 
       const labels = hw.monthly_labels || ["okt '26"];
-      const values = hw.monthly_values || [hw.month_m3 || 52.7];
-      const unitCost = hw.effective_unit_isk || 288;
+      const isM3 = (currentHwUnit === 'm3');
+      const curSeries = isM3 ? (hw.monthly_values || [hw.month_m3 || 52.7]) : (hw.monthly_costs || [15160]);
+      const prevSeries = isM3 ? (hw.monthly_values_prev || [63.9]) : (hw.monthly_costs_prev || [17691]);
 
       waterChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -606,20 +880,47 @@
           labels: labels,
           datasets: [
             {
-              label: 'Heitt vatn (m³)',
-              data: values,
-              backgroundColor: 'rgba(234, 88, 12, 0.82)',
+              label: isM3 ? 'Þetta ár (m³)' : 'Þetta ár (kr.)',
+              data: curSeries,
+              backgroundColor: 'rgba(234, 88, 12, 0.88)',
               hoverBackgroundColor: 'rgba(234, 88, 12, 1)',
-              borderRadius: 6,
-              maxBarThickness: 44
+              borderRadius: 5,
+              barPercentage: 0.8,
+              categoryPercentage: 0.75
+            },
+            {
+              label: isM3 ? 'Fyrra ár (m³)' : 'Fyrra ár (kr.)',
+              data: prevSeries,
+              backgroundColor: 'rgba(148, 163, 184, 0.55)',
+              hoverBackgroundColor: 'rgba(148, 163, 184, 0.85)',
+              borderRadius: 5,
+              barPercentage: 0.8,
+              categoryPercentage: 0.75
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (event, elements) => {
+            if (elements && elements.length > 0) {
+              const idx = elements[0].index;
+              onSelectHotWaterIndex(idx);
+            }
+          },
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 10,
+                boxHeight: 10,
+                font: { size: 11, family: 'Inter' },
+                color: '#64748b',
+                usePointStyle: true
+              }
+            },
             tooltip: {
               backgroundColor: '#0f172a',
               padding: 10,
@@ -629,8 +930,10 @@
               callbacks: {
                 label: function(context) {
                   const val = Number(context.raw || 0);
-                  const approxCost = formatIsNumber(Math.round(val * unitCost));
-                  return ` ${formatIsNumber(val, 1)} m³ (~${approxCost} kr.)`;
+                  const dsLabel = context.dataset.label || '';
+                  return isM3
+                    ? ` ${dsLabel}: ${formatIsNumber(val, 1)} m³`
+                    : ` ${dsLabel}: ${formatIsNumber(val)} kr.`;
                 }
               }
             }
@@ -650,7 +953,9 @@
               ticks: {
                 font: { size: 11 },
                 color: '#64748b',
-                callback: function(value) { return value + ' m³'; }
+                callback: function(value) {
+                  return isM3 ? value + ' m³' : formatIsNumber(value) + ' kr.';
+                }
               }
             }
           }
