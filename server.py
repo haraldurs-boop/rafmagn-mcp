@@ -92,13 +92,19 @@ def check_auth_status() -> Dict[str, Any]:
     ork_cookies = auth.get("orkusalan", {}).get("cookies", {})
     if "connect.sid" in ork_cookies:
         try:
-            with get_orkusalan_client() as client:
-                res = client.get("/api/user/get_mandates_by_customer")
+            with httpx.Client(
+                cookies=ork_cookies,
+                base_url="https://minarsidur.orkusalan.is",
+                follow_redirects=False,
+                timeout=5.0,
+                headers={"User-Agent": "Mozilla/5.0"}
+            ) as client:
+                res = client.get("/minar-sidur")
                 if res.status_code == 200:
                     status["orkusalan"]["authenticated"] = True
                     status["orkusalan"]["message"] = "Session active (connect.sid valid)"
                 else:
-                    status["orkusalan"]["message"] = f"Expired (HTTP {res.status_code}). Run `python auth_helper.py orkusalan`"
+                    status["orkusalan"]["message"] = f"Session expired (HTTP {res.status_code}). Run `python auth_helper.py orkusalan`"
         except Exception as e:
             status["orkusalan"]["message"] = f"Connection error: {e}"
     else:
@@ -110,7 +116,8 @@ def check_auth_status() -> Dict[str, Any]:
         try:
             with get_rarik_client() as client:
                 res = client.get("/yfirlit/notkun/")
-                if res.status_code == 200 and "login" not in str(res.url).lower():
+                url_lower = str(res.url).lower()
+                if res.status_code == 200 and "login" not in url_lower and "innskraning" not in url_lower:
                     status["rarik"]["authenticated"] = True
                     status["rarik"]["message"] = "Session active (.ASPXAUTH valid)"
                 else:

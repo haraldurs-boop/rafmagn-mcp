@@ -124,14 +124,15 @@ def get_dashboard_data() -> Dict[str, Any]:
         # 1. Connection Health Check
         auth_status: Dict[str, Any] = {"orkusalan": False, "rarik": False, "veitur": False}
         try:
-            r_ork = ork_client.get("/api/user/get_mandates_by_customer")
+            r_ork = ork_client.get("/minar-sidur", follow_redirects=False)
             auth_status["orkusalan"] = (r_ork.status_code == 200)
         except Exception:
             pass
 
         try:
             r_rar = rarik_client.get("/yfirlit/notkun/")
-            auth_status["rarik"] = (r_rar.status_code == 200 and "login" not in str(r_rar.url).lower())
+            url_l = str(r_rar.url).lower()
+            auth_status["rarik"] = (r_rar.status_code == 200 and "login" not in url_l and "innskraning" not in url_l)
         except Exception:
             pass
 
